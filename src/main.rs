@@ -34,7 +34,6 @@ fn main() {
         Some(d) => vec![(d, all_days[d - 1], read_input(d))],
     };
 
-    let start = Instant::now();
     day_and_solver.into_iter().for_each(|(day, solver, input)| {
         {
             let mut ctx = MeasureContext::new();
@@ -54,16 +53,14 @@ fn main() {
 
         println!("day{}/part1: {}", day, p1);
         println!("day{}/part2: {}", day, p2);
-        println!("day{}/solve_time: {:?}", day, (end - start) / args.repeat);
-        ctx.measurements().for_each(|(label, duration)| {
-            println!(
-                "day{}/solve_time/{}: {:?}",
-                day,
-                label,
-                duration / args.repeat
-            );
-        });
+        println!(
+            "day{}/solve_time: {:?} ({})",
+            day,
+            (end - start) / args.repeat,
+            ctx.measurements()
+                .map(|(label, duration)| { format!("{}: {:?}", label, duration / args.repeat) })
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     });
-    let end = Instant::now();
-    println!("Total solve_time: {:?}", (end - start) / args.repeat);
 }

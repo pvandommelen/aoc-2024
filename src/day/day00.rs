@@ -1,5 +1,5 @@
-use winnow::{PResult, Parser};
 use crate::solution::Solution;
+use winnow::{PResult, Parser};
 
 type PreparedInput = Vec<i64>;
 
@@ -20,8 +20,11 @@ fn solve_part2(input: &PreparedInput) -> usize {
 }
 
 pub fn solve(input: &str) -> (Solution, Solution) {
-    let input = prepare(input);
-    (solve_part1(&input).into(), solve_part2(&input).into())
+    let input = ctx.measure("prepare", || prepare(input));
+    (
+        ctx.measure("part1", || solve_part1(&input)).into(),
+        ctx.measure("part2", || solve_part2(&input)).into(),
+    )
 }
 
 #[cfg(test)]

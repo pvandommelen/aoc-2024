@@ -1,4 +1,5 @@
 use aoc_2024::day::*;
+use aoc_2024::util::measure::MeasureContext;
 use clap::Parser;
 use std::hint::black_box;
 use std::time::Instant;
@@ -20,9 +21,7 @@ fn main() {
     let args = Args::parse();
     assert!(args.repeat > 0);
 
-    let all_days = [
-        day01::solve,
-    ];
+    let all_days = [day01::solve];
 
     let day_and_solver: Vec<_> = match args.day {
         None => all_days
@@ -35,16 +34,25 @@ fn main() {
 
     let start = Instant::now();
     day_and_solver.into_iter().for_each(|(day, solver, input)| {
+        let mut ctx = MeasureContext::new();
         let start = Instant::now();
         for _ in 0..args.repeat - 1 {
-            black_box(solver(black_box(&input)));
+            black_box(solver(&mut ctx, black_box(&input)));
         }
-        let (p1, p2) = solver(black_box(&input));
+        let (p1, p2) = solver(&mut ctx, black_box(&input));
         let end = Instant::now();
 
         println!("day{}/part1: {}", day, p1);
         println!("day{}/part2: {}", day, p2);
         println!("day{}/solve_time: {:?}", day, (end - start) / args.repeat);
+        ctx.measurements().for_each(|(label, duration)| {
+            println!(
+                "day{}/solve_time/{}: {:?}",
+                day,
+                label,
+                duration / args.repeat
+            );
+        });
     });
     let end = Instant::now();
     println!("Total solve_time: {:?}", (end - start) / args.repeat);

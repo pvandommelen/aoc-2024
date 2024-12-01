@@ -1,4 +1,5 @@
 use crate::solution::Solution;
+use crate::util::measure::MeasureContext;
 use rustc_hash::FxHashMap;
 
 type PreparedInput = (Vec<u32>, Vec<u32>);
@@ -40,9 +41,12 @@ fn solve_part2(input: &PreparedInput) -> u32 {
         .sum()
 }
 
-pub fn solve(input: &str) -> (Solution, Solution) {
-    let input = prepare(input);
-    (solve_part1(&input).into(), solve_part2(&input).into())
+pub fn solve(ctx: &mut MeasureContext, input: &str) -> (Solution, Solution) {
+    let input = ctx.measure("prepare", || prepare(input));
+    (
+        ctx.measure("part1", || solve_part1(&input)).into(),
+        ctx.measure("part2", || solve_part2(&input)).into(),
+    )
 }
 
 #[cfg(test)]

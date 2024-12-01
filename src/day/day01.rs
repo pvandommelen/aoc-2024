@@ -1,22 +1,19 @@
 use crate::solution::Solution;
 use rustc_hash::FxHashMap;
-use winnow::ascii::multispace1;
-use winnow::combinator::separated_pair;
-use winnow::{PResult, Parser};
 
 type PreparedInput = (Vec<u32>, Vec<u32>);
 
-fn line(input: &mut &str) -> PResult<(u32, u32), winnow::error::ContextError> {
-    separated_pair(
-        winnow::ascii::dec_uint,
-        multispace1,
-        winnow::ascii::dec_uint,
-    )
-    .parse_next(input)
+fn line(input: &str) -> (u32, u32) {
+    let mut it = input.split_ascii_whitespace();
+
+    let a = it.next().unwrap().parse().unwrap();
+    let b = it.next().unwrap().parse().unwrap();
+
+    (a, b)
 }
 
 fn prepare(input: &str) -> PreparedInput {
-    input.lines().map(|l| line.parse(l).unwrap()).unzip()
+    input.lines().map(line).unzip()
 }
 
 fn solve_part1(input: &PreparedInput) -> u32 {

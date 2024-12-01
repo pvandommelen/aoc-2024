@@ -11,6 +11,8 @@ struct Args {
     day: Option<usize>,
     #[arg(short, long, default_value = "1")]
     repeat: u32,
+    #[arg(short, long, default_value = "0")]
+    warmup: u32,
 }
 
 fn read_input(day: usize) -> String {
@@ -34,6 +36,14 @@ fn main() {
 
     let start = Instant::now();
     day_and_solver.into_iter().for_each(|(day, solver, input)| {
+        {
+            let mut ctx = MeasureContext::new();
+
+            for _ in 0..args.warmup {
+                black_box(solver(&mut ctx, black_box(&input)));
+            }
+        }
+
         let mut ctx = MeasureContext::new();
         let start = Instant::now();
         for _ in 0..args.repeat - 1 {

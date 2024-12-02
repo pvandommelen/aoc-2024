@@ -23,7 +23,7 @@ fn main() {
     let args = Args::parse();
     assert!(args.repeat > 0);
 
-    let all_days = [day01::solve];
+    let all_days = [day01::solve, day02::solve];
 
     let day_and_solver: Vec<_> = match args.day {
         None => all_days

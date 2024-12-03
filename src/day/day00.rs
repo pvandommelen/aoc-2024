@@ -1,4 +1,5 @@
 use crate::solution::Solution;
+use crate::util::measure::MeasureContext;
 use winnow::{PResult, Parser};
 
 type PreparedInput = Vec<i64>;
@@ -19,7 +20,7 @@ fn solve_part2(input: &PreparedInput) -> usize {
     input.iter().count()
 }
 
-pub fn solve(input: &str) -> (Solution, Solution) {
+pub fn solve(ctx: &mut MeasureContext, input: &str) -> (Solution, Solution) {
     let input = ctx.measure("prepare", || prepare(input));
     (
         ctx.measure("part1", || solve_part1(&input)).into(),

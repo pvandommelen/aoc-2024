@@ -1,4 +1,5 @@
 use aoc_2024::day::*;
+use aoc_2024::solution::SolutionTuple;
 use aoc_2024::util::measure::MeasureContext;
 use clap::Parser;
 use std::hint::black_box;
@@ -48,7 +49,7 @@ fn main() {
         for _ in 0..args.repeat - 1 {
             black_box(solver(&mut ctx, black_box(&input)));
         }
-        let (p1, p2) = solver(&mut ctx, black_box(&input));
+        let SolutionTuple(p1, p2) = solver(&mut ctx, black_box(&input));
         let end = Instant::now();
 
         println!("day{}/part1: {}", day, p1);

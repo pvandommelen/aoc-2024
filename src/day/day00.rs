@@ -1,4 +1,4 @@
-use crate::solution::Solution;
+use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
 use winnow::{PResult, Parser};
 
@@ -20,12 +20,13 @@ fn solve_part2(input: &PreparedInput) -> usize {
     input.iter().count()
 }
 
-pub fn solve(ctx: &mut MeasureContext, input: &str) -> (Solution, Solution) {
+pub fn solve(ctx: &mut MeasureContext, input: &str) -> SolutionTuple {
     let input = ctx.measure("prepare", || prepare(input));
     (
-        ctx.measure("part1", || solve_part1(&input)).into(),
-        ctx.measure("part2", || solve_part2(&input)).into(),
+        ctx.measure("part1", || solve_part1(&input)),
+        ctx.measure("part2", || solve_part2(&input)),
     )
+        .into()
 }
 
 #[cfg(test)]

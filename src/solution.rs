@@ -1,7 +1,7 @@
-// Copy from https://github.com/agubelu/AoC-rust-template/tree/master
+// Copied and extended from https://github.com/agubelu/AoC-rust-template/tree/master
 
-use std::fmt::{Display, Formatter, Result};
 use Solution::*;
+use std::fmt::{Display, Formatter, Result};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Solution {
@@ -19,6 +19,8 @@ pub enum Solution {
     Usize(usize),
     Str(String),
 }
+
+pub struct SolutionTuple(pub Solution, pub Solution);
 
 impl Display for Solution {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
@@ -67,5 +69,15 @@ impl_from!(String, Str);
 impl From<&str> for Solution {
     fn from(sol: &str) -> Self {
         Str(sol.to_owned())
+    }
+}
+
+impl<A, B> From<(A, B)> for SolutionTuple
+where
+    A: Into<Solution>,
+    B: Into<Solution>,
+{
+    fn from(value: (A, B)) -> Self {
+        SolutionTuple(value.0.into(), value.1.into())
     }
 }

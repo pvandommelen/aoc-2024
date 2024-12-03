@@ -1,4 +1,4 @@
-use crate::solution::Solution;
+use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
 use winnow::Parser;
 use winnow::ascii::dec_uint;
@@ -31,9 +31,8 @@ fn solve_both(mut input: &str) -> (u32, u32) {
     (enabled + disabled, enabled)
 }
 
-pub fn solve(_ctx: &mut MeasureContext, input: &str) -> (Solution, Solution) {
-    let both = solve_both(input);
-    (both.0.into(), both.1.into())
+pub fn solve(_ctx: &mut MeasureContext, input: &str) -> SolutionTuple {
+    solve_both(input).into()
 }
 
 #[cfg(test)]

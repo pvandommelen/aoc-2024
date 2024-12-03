@@ -1,6 +1,6 @@
 extern crate core;
 
 pub mod day;
-mod solution;
+pub mod solution;
 #[allow(dead_code)]
 pub mod util;

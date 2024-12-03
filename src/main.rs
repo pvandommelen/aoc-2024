@@ -54,13 +54,22 @@ fn main() {
         println!("day{}/part1: {}", day, p1);
         println!("day{}/part2: {}", day, p2);
         println!(
-            "day{}/solve_time: {:?} ({})",
+            "day{}/solve_time: {:?}{}",
             day,
             (end - start) / args.repeat,
-            ctx.measurements()
-                .map(|(label, duration)| { format!("{}: {:?}", label, duration / args.repeat) })
-                .collect::<Vec<_>>()
-                .join(", ")
+            if ctx.measurements().next().is_none() {
+                "".to_string()
+            } else {
+                format!(
+                    " ({})",
+                    ctx.measurements()
+                        .map(|(label, duration)| {
+                            format!("{}: {:?}", label, duration / args.repeat)
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }
         );
     });
 }

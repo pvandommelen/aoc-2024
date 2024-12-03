@@ -13,7 +13,7 @@ impl MeasureContext {
     }
 
     #[inline]
-    pub fn measure<T>(&mut self, label: &'static str, f: impl Fn() -> T) -> T {
+    pub fn measure<T>(&mut self, label: &'static str, f: impl FnOnce() -> T) -> T {
         let start = Instant::now();
 
         let result = f();

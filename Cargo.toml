@@ -12,6 +12,7 @@ path = "src/main.rs"
 test = false
 
 [dependencies]
+arrayvec = "0.7.6"
 clap = { version = "4.4.10", features = ["derive"] }
 indexmap = "2.7.0"
 rustc-hash = "2.0.0"

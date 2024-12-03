@@ -1,9 +1,10 @@
 use crate::solution::Solution;
 use crate::util::measure::MeasureContext;
+use arrayvec::ArrayVec;
 
-type PreparedInput = Vec<Vec<u8>>;
+type PreparedInput = Vec<ArrayVec<u8, 8>>;
 
-fn line(input: &str) -> Vec<u8> {
+fn line(input: &str) -> ArrayVec<u8, 8> {
     input
         .split_ascii_whitespace()
         .map(|s| s.parse().unwrap())
@@ -14,22 +15,32 @@ fn prepare(input: &str) -> PreparedInput {
     input.lines().map(line).collect()
 }
 
-fn is_increasing(slice: &[u8]) -> bool {
-    slice
-        .windows(2)
-        .all(|window| window[0] < window[1] && window[1] - window[0] <= 3)
+fn find_nonincreasing(mut cur: u8, remaining: &[u8]) -> Option<usize> {
+    for (i, &num) in remaining.iter().enumerate() {
+        if num <= cur || num - cur > 3 {
+            return Some(i);
+        }
+        cur = remaining[i];
+    }
+    None
 }
-
-fn is_decreasing(slice: &[u8]) -> bool {
-    slice
-        .windows(2)
-        .all(|window| window[0] > window[1] && window[0] - window[1] <= 3)
+fn find_nondecreasing(mut cur: u8, remaining: &[u8]) -> Option<usize> {
+    for (i, &num) in remaining.iter().enumerate() {
+        if num >= cur || cur - num > 3 {
+            return Some(i);
+        }
+        cur = remaining[i];
+    }
+    None
 }
 
 fn solve_part1(input: &PreparedInput) -> usize {
     input
         .iter()
-        .filter(|report| is_increasing(report) || is_decreasing(report))
+        .filter(|report| {
+            find_nonincreasing(report[0], &report[1..]).is_none()
+                || find_nondecreasing(report[0], &report[1..]).is_none()
+        })
         .count()
 }
 
@@ -37,24 +48,49 @@ fn solve_part2(input: &PreparedInput) -> usize {
     input
         .iter()
         .filter(|&report| {
-            is_increasing(report)
-                || is_decreasing(report)
-                || (0..report.len()).any(|i| {
-                    let mut report = report.clone();
-                    report.remove(i);
-
-                    is_increasing(&report) || is_decreasing(&report)
-                })
+            let Some(nonincreasing) = find_nonincreasing(report[0], &report[1..report.len() - 1])
+            else {
+                return true;
+            };
+            let Some(nondecreasing) = find_nondecreasing(report[0], &report[1..report.len() - 1])
+            else {
+                return true;
+            };
+            if find_nonincreasing(report[nonincreasing], &report[nonincreasing + 2..]).is_none() {
+                return true;
+            } else if nonincreasing > 0 {
+                if find_nonincreasing(report[nonincreasing - 1], &report[nonincreasing + 1..])
+                    .is_none()
+                {
+                    return true;
+                }
+            } else if find_nonincreasing(report[1], &report[2..]).is_none() {
+                return true;
+            }
+            if find_nondecreasing(report[nondecreasing], &report[nondecreasing + 2..]).is_none() {
+                return true;
+            } else if nondecreasing > 0 {
+                if find_nondecreasing(report[nondecreasing - 1], &report[nondecreasing + 1..])
+                    .is_none()
+                {
+                    return true;
+                }
+            } else if find_nondecreasing(report[1], &report[2..]).is_none() {
+                return true;
+            }
+            false
         })
         .count()
 }
 
 pub fn solve(ctx: &mut MeasureContext, input: &str) -> (Solution, Solution) {
     let input = ctx.measure("prepare", || prepare(input));
-    (
+    let r = (
         ctx.measure("part1", || solve_part1(&input)).into(),
         ctx.measure("part2", || solve_part2(&input)).into(),
-    )
+    );
+    ctx.measure("drop", move || drop(input));
+    r
 }
 
 #[cfg(test)]

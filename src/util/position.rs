@@ -50,6 +50,7 @@ impl Direction {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct PositionOffset(pub isize, pub isize);
 
 impl From<(isize, isize)> for PositionOffset {

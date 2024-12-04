@@ -10,10 +10,7 @@ fn prepare(input: &str) -> PreparedInput {
 
 fn solve_part1(input: &PreparedInput) -> usize {
     let mut count = 0;
-    input.iter().for_each(|(pos, char)| {
-        if *char != b'X' {
-            return;
-        }
+    input.positions_where(|c| *c == b'X').for_each(|pos| {
         for dx in -1isize..2 {
             for dy in -1isize..2 {
                 if dx == 0 && dy == 0 {

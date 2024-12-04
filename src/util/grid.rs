@@ -80,6 +80,14 @@ impl<T> Grid<T> {
         (0..self.data.len()).map(move |i| div_rem(i, dimensions.1).into())
     }
 
+    pub fn positions_where(&self, mut f: impl FnMut(&T) -> bool) -> impl Iterator<Item = Position> {
+        self.data
+            .iter()
+            .enumerate()
+            .filter(move |&(_, value)| f(value))
+            .map(|(i, _)| div_rem(i, self.dimensions.1).into())
+    }
+
     fn index(&self, pos: &Position) -> usize {
         pos.0 * self.dimensions.1 + pos.1
     }

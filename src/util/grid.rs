@@ -294,38 +294,35 @@ impl<'a, I> BackedGrid<'a, I> {
 
 pub struct GridWindow3<'grid, T> {
     grid: &'grid Grid<T>,
-    pos: Position,
+    idx: usize,
 }
 impl<T> GridWindow3<'_, T> {
-    pub fn pos(&self) -> &Position {
-        &self.pos
-    }
     pub fn center(&self) -> &T {
-        self.grid.get(&self.pos)
+        &self.grid.data[self.idx]
     }
     pub fn top_left(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(-1, -1).into()))
+        &self.grid.data[self.idx - self.grid.dimensions.1 - 1]
     }
     pub fn top(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(-1, 0).into()))
+        &self.grid.data[self.idx - self.grid.dimensions.1]
     }
     pub fn top_right(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(-1, 1).into()))
+        &self.grid.data[self.idx - self.grid.dimensions.1 + 1]
     }
     pub fn right(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(0, 1).into()))
+        &self.grid.data[self.idx + 1]
     }
     pub fn bottom_right(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(1, 1).into()))
+        &self.grid.data[self.idx + self.grid.dimensions.1 + 1]
     }
     pub fn bottom(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(1, 0).into()))
+        &self.grid.data[self.idx + self.grid.dimensions.1]
     }
     pub fn bottom_left(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(1, -1).into()))
+        &self.grid.data[self.idx + self.grid.dimensions.1 - 1]
     }
     pub fn left(&self) -> &T {
-        self.grid.get(&self.pos.moved(&(0, -1).into()))
+        &self.grid.data[self.idx - 1]
     }
 }
 
@@ -334,8 +331,79 @@ impl<T> Grid<T> {
         (1..self.dimensions.1 - 1).flat_map(move |y| {
             (1..self.dimensions.0 - 1).map(move |x| GridWindow3 {
                 grid: self,
-                pos: Position::from_yx(y, x),
+                idx: y * self.dimensions.1 + x,
             })
+        })
+    }
+
+    pub fn iter_windows3_where(
+        &self,
+        mut f: impl FnMut(&T) -> bool,
+    ) -> impl Iterator<Item = GridWindow3<'_, T>> {
+        (self.dimensions.1 + 1..self.data.len() - self.dimensions.1 - 1).filter_map(move |i| {
+            if !f(&self.data[i]) {
+                return None;
+            }
+            let x = i % self.dimensions.1;
+
+            (x != 0 && x != self.dimensions.1 - 1).then_some(GridWindow3 { grid: self, idx: i })
+        })
+    }
+}
+
+impl<T> Grid<T> {
+    pub fn columns(&self) -> impl Iterator<Item = impl Iterator<Item = T>>
+    where
+        T: Clone,
+    {
+        (0..self.dimensions.1).map(move |x| {
+            (0..self.dimensions.0)
+                .map(move |y| self.get(&Position(y, x)))
+                .cloned()
+        })
+    }
+    pub fn diagonals_lower(&self) -> impl Iterator<Item = impl Iterator<Item = T>>
+    where
+        T: Clone,
+    {
+        let smallest = self.dimensions.0.min(self.dimensions.1);
+        (0..smallest).map(move |y_start| {
+            (0..smallest - y_start)
+                .map(move |i| self.get(&Position(y_start + i, i)))
+                .cloned()
+        })
+    }
+    pub fn diagonals_upper(&self) -> impl Iterator<Item = impl Iterator<Item = T>>
+    where
+        T: Clone,
+    {
+        let smallest = self.dimensions.0.min(self.dimensions.1);
+        (0..smallest).map(move |x_start| {
+            (0..smallest - x_start)
+                .map(move |i| self.get(&Position(i, x_start + i)))
+                .cloned()
+        })
+    }
+    pub fn anti_diagonals_upper(&self) -> impl Iterator<Item = impl Iterator<Item = T>>
+    where
+        T: Clone,
+    {
+        let smallest = self.dimensions.0.min(self.dimensions.1);
+        (0..smallest).map(move |y_start| {
+            (0..y_start + 1)
+                .map(move |i| self.get(&Position(y_start - i, i)))
+                .cloned()
+        })
+    }
+    pub fn anti_diagonals_lower(&self) -> impl Iterator<Item = impl Iterator<Item = T>>
+    where
+        T: Clone,
+    {
+        let smallest = self.dimensions.0.min(self.dimensions.1);
+        (0..smallest).map(move |x_start| {
+            (0..smallest - x_start)
+                .map(move |i| self.get(&Position(self.dimensions.0 - 1 - i, x_start + i)))
+                .cloned()
         })
     }
 }

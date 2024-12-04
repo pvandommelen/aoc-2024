@@ -1,3 +1,5 @@
+use std::ops::{Add, AddAssign, Mul};
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RotationalDirection {
     Clockwise,
@@ -56,6 +58,14 @@ pub struct PositionOffset(pub isize, pub isize);
 impl From<(isize, isize)> for PositionOffset {
     fn from(value: (isize, isize)) -> Self {
         PositionOffset(value.0, value.1)
+    }
+}
+
+impl Mul<isize> for &PositionOffset {
+    type Output = PositionOffset;
+
+    fn mul(self, rhs: isize) -> Self::Output {
+        PositionOffset(self.0 * rhs, self.1 * rhs)
     }
 }
 
@@ -134,15 +144,25 @@ impl Position {
         dimensions: &Dimensions,
         offset: &PositionOffset,
     ) -> impl Iterator<Item = Position> {
-        let dimensions = *dimensions;
-        let mut current = *self;
-        std::iter::from_fn(move || {
-            if current.checked_move(&dimensions, offset) {
-                Some(current)
-            } else {
-                None
-            }
-        })
+        assert!(offset.0 != 0 || offset.1 != 0);
+
+        let steps_y = if offset.0 == 0 {
+            isize::MAX
+        } else if offset.0.is_positive() {
+            (dimensions.0 - 1 - self.0) as isize / offset.0
+        } else {
+            self.0 as isize / -offset.0
+        };
+        let steps_x = if offset.1 == 0 {
+            isize::MAX
+        } else if offset.1.is_positive() {
+            (dimensions.1 - 1 - self.1) as isize / offset.1
+        } else {
+            self.1 as isize / -offset.1
+        };
+        let steps = steps_y.min(steps_x);
+
+        (0..steps).map(move |i| *self + offset * (i + 1))
     }
 
     pub fn manhattan_distance(&self, other: &Position) -> usize {
@@ -168,5 +188,22 @@ impl From<Position> for (usize, usize) {
 impl From<(usize, usize)> for Position {
     fn from(value: (usize, usize)) -> Self {
         Position(value.0, value.1)
+    }
+}
+
+impl Add<PositionOffset> for Position {
+    type Output = Position;
+
+    fn add(self, rhs: PositionOffset) -> Self::Output {
+        Position(
+            self.0.checked_add_signed(rhs.0).unwrap(),
+            self.1.checked_add_signed(rhs.1).unwrap(),
+        )
+    }
+}
+impl AddAssign<PositionOffset> for Position {
+    fn add_assign(&mut self, rhs: PositionOffset) {
+        self.0 = self.0.checked_add_signed(rhs.0).unwrap();
+        self.1 = self.1.checked_add_signed(rhs.1).unwrap();
     }
 }

@@ -43,12 +43,12 @@ fn prepare(input: &str) -> PreparedInput {
     }
 }
 
-fn find_last_mismatch(input: &PreparedInput, u: &[u8], i: usize) -> Option<usize> {
+fn find_first_mismatch(input: &PreparedInput, u: &[u8], i: usize) -> Option<usize> {
     let num = u[i];
     let firsts = &input.page_ordering_rules[num as usize];
     u[i..]
         .iter()
-        .rposition(|num| firsts.contains(num))
+        .position(|num| firsts.contains(num))
         .map(|idx| idx + i)
 }
 
@@ -57,11 +57,11 @@ fn fix_sort_halfway(input: &PreparedInput, u: &[u8], modified: &mut bool) -> u8 
 
     let mut i = 0;
     loop {
-        let idx_furthest = find_last_mismatch(input, &u, i);
+        let idx_first_mismatch = find_first_mismatch(input, &u, i);
 
-        if let Some(idx_furthest) = idx_furthest {
+        if let Some(idx_first_mismatch) = idx_first_mismatch {
             *modified = true;
-            u[i..idx_furthest + 1].rotate_left(1);
+            u[i..idx_first_mismatch + 1].rotate_right(1);
         } else {
             if i == (u.len() - 1) / 2 {
                 return u[i];

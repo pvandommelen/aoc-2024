@@ -1,11 +1,15 @@
 use crate::solution::SolutionTuple;
+use crate::util::intset::ArraySet;
 use crate::util::measure::MeasureContext;
-use rustc_hash::{FxHashMap, FxHashSet};
 
 struct PreparedInput {
-    /// second number to first number.
-    page_ordering_rules: FxHashMap<u8, FxHashSet<u8>>,
+    /// Indexed by second number to first number.
+    page_ordering_rules: Vec<ArraySet<100>>,
     updates: Vec<Vec<u8>>,
+}
+
+fn parse_two_char_num(b: &[u8]) -> u8 {
+    (b[0] - b'0') * 10 + (b[1] - b'0')
 }
 
 fn prepare(input: &str) -> PreparedInput {
@@ -13,31 +17,39 @@ fn prepare(input: &str) -> PreparedInput {
     assert_eq!(sections.len(), 2);
 
     PreparedInput {
-        page_ordering_rules: sections[0]
-            .lines()
-            .fold(FxHashMap::default(), |mut map, l| {
-                let pair = l.split("|").collect::<Vec<_>>();
-                assert_eq!(pair.len(), 2);
-                let first = pair[0].parse().unwrap();
-                let second = pair[1].parse().unwrap();
-                map.entry(second).or_default().insert(first);
+        page_ordering_rules: sections[0].lines().fold(
+            vec![ArraySet::<100>::new(); 100],
+            |mut map, l| {
+                let bytes = l.as_bytes();
+                assert_eq!(bytes.len(), 5);
+                let first = parse_two_char_num(&bytes[0..2]);
+                let second = parse_two_char_num(&bytes[3..5]);
+                map[second as usize].insert(first);
                 map
-            }),
+            },
+        ),
         updates: sections[1]
             .lines()
-            .map(|l| l.split(",").map(|s| s.parse().unwrap()).collect::<Vec<_>>())
+            .map(|l| {
+                let chunks = l.as_bytes().chunks_exact(3);
+
+                let mut v = Vec::with_capacity(chunks.len() + 1);
+                let remainder = chunks.remainder();
+                v.extend(chunks.map(parse_two_char_num));
+                v.push(parse_two_char_num(remainder));
+                v
+            })
             .collect(),
     }
 }
 
 fn find_last_mismatch(input: &PreparedInput, u: &[u8], i: usize) -> Option<usize> {
     let num = u[i];
-    input.page_ordering_rules.get(&num).and_then(|firsts| {
-        u[i..]
-            .iter()
-            .rposition(|num| firsts.contains(num))
-            .map(|idx| idx + i)
-    })
+    let firsts = &input.page_ordering_rules[num as usize];
+    u[i..]
+        .iter()
+        .rposition(|num| firsts.contains(num))
+        .map(|idx| idx + i)
 }
 
 fn fix_sort_halfway(input: &PreparedInput, u: &[u8], modified: &mut bool) -> u8 {
@@ -117,7 +129,14 @@ mod tests {
     #[test]
     fn example_prepare() {
         let input = prepare(EXAMPLE_INPUT);
-        assert_eq!(input.page_ordering_rules.values().flatten().count(), 21);
+        assert_eq!(
+            input
+                .page_ordering_rules
+                .iter()
+                .map(|rule| rule.len())
+                .sum::<usize>(),
+            21
+        );
         assert_eq!(input.updates.len(), 6);
     }
     #[test]

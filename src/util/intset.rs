@@ -34,7 +34,7 @@ impl IntSet {
         }
     }
 
-    pub fn insert<T>(&mut self, val: T)
+    pub fn insert<T>(&mut self, val: T) -> bool
     where
         T: Copy + Into<usize>,
     {
@@ -44,7 +44,9 @@ impl IntSet {
         if index >= self.data.len() {
             self.data.resize(index + 1, 0);
         }
+        let cur = self.data[index];
         self.data[index] |= 1 << offset;
+        (cur & 1 << offset) == 0
     }
 
     pub fn contains<T>(&self, val: &T) -> bool

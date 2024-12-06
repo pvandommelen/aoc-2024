@@ -6,54 +6,36 @@ pub enum RotationalDirection {
     Anticlockwise,
 }
 
-impl RotationalDirection {
-    pub fn from_incoming_and_outgoing(incoming: &Direction, outgoing: &Direction) -> Option<Self> {
-        match (*outgoing as u8 + 4 - *incoming as u8) % 4 {
-            0 => None,
-            1 => Some(RotationalDirection::Clockwise),
-            2 => None,
-            3 => Some(RotationalDirection::Anticlockwise),
-            _ => panic!(),
-        }
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct PositionOffset(pub isize, pub isize);
+
+impl PositionOffset {
+    pub fn up() -> Self {
+        PositionOffset(-1, 0)
     }
-}
+    pub fn right() -> Self {
+        PositionOffset(0, 1)
+    }
+    pub fn down() -> Self {
+        PositionOffset(1, 0)
+    }
+    pub fn left() -> Self {
+        PositionOffset(0, -1)
+    }
 
-#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash)]
-pub enum Direction {
-    Up = 0,
-    Right = 1,
-    Down = 2,
-    Left = 3,
-}
-
-impl Direction {
     #[must_use]
-    pub fn with_rotation(self, rotational_direction: &RotationalDirection) -> Self {
-        match (self, rotational_direction) {
-            (Direction::Up, RotationalDirection::Clockwise) => Direction::Right,
-            (Direction::Up, RotationalDirection::Anticlockwise) => Direction::Left,
-            (Direction::Down, RotationalDirection::Clockwise) => Direction::Left,
-            (Direction::Down, RotationalDirection::Anticlockwise) => Direction::Right,
-            (Direction::Right, RotationalDirection::Clockwise) => Direction::Down,
-            (Direction::Right, RotationalDirection::Anticlockwise) => Direction::Up,
-            (Direction::Left, RotationalDirection::Clockwise) => Direction::Up,
-            (Direction::Left, RotationalDirection::Anticlockwise) => Direction::Down,
+    pub fn rotated(self, rotational_direction: &RotationalDirection) -> Self {
+        match rotational_direction {
+            RotationalDirection::Clockwise => Self(self.1, -self.0),
+            RotationalDirection::Anticlockwise => Self(-self.1, self.0),
         }
     }
 
     #[must_use]
     pub fn inverted(&self) -> Self {
-        match self {
-            Direction::Up => Direction::Down,
-            Direction::Right => Direction::Left,
-            Direction::Down => Direction::Up,
-            Direction::Left => Direction::Right,
-        }
+        Self(-self.0, -self.1)
     }
 }
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub struct PositionOffset(pub isize, pub isize);
 
 impl From<(isize, isize)> for PositionOffset {
     fn from(value: (isize, isize)) -> Self {

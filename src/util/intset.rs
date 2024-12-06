@@ -30,11 +30,11 @@ impl IntSet {
         T: Into<usize>,
     {
         IntSet {
-            data: vec![0; maximum.into() / 64],
+            data: vec![0; (maximum.into() + 63) / 64],
         }
     }
 
-    pub fn insert<T>(&mut self, val: T)
+    pub fn insert<T>(&mut self, val: T) -> bool
     where
         T: Copy + Into<usize>,
     {
@@ -44,7 +44,9 @@ impl IntSet {
         if index >= self.data.len() {
             self.data.resize(index + 1, 0);
         }
+        let cur = self.data[index];
         self.data[index] |= 1 << offset;
+        (cur & 1 << offset) == 0
     }
 
     pub fn contains<T>(&self, val: &T) -> bool
@@ -73,6 +75,12 @@ impl IntSet {
 
     pub fn is_empty(&self) -> bool {
         self.data.iter().all(|val| val.count_ones() == 0)
+    }
+
+    pub fn clear(&mut self) {
+        self.data.iter_mut().for_each(|val| {
+            *val = 0;
+        });
     }
 }
 

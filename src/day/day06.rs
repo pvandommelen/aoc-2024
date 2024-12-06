@@ -1,7 +1,8 @@
 use crate::solution::SolutionTuple;
 use crate::util::grid::Grid;
+use crate::util::intset::IntSet;
 use crate::util::measure::MeasureContext;
-use crate::util::position::{Position, PositionOffset, RotationalDirection};
+use crate::util::position::{Direction, Position, RotationalDirection};
 use rustc_hash::FxHashSet;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -30,32 +31,41 @@ enum WalkResult {
     Loop,
 }
 
+type VisitedWithPositionSet = IntSet;
+
 fn walk(
     grid: &PreparedInput,
+    mut visited: VisitedWithPositionSet,
     pos: &Position,
-    direction: &PositionOffset,
+    direction: &Direction,
     obstruction_test_fn: impl Fn(&Position) -> bool,
-    mut each_fn: impl FnMut(&Position, &PositionOffset),
+    mut each_fn: impl FnMut(&Position, &Direction, &VisitedWithPositionSet),
 ) -> WalkResult {
-    let mut visited = FxHashSet::default();
+    assert!(grid.dimensions.0 < 256 && grid.dimensions.1 < 256);
+
     let mut pos = *pos;
     let mut direction = *direction;
 
-    loop {
-        let previous_visit = visited.insert((pos, direction));
-        if !previous_visit {
-            return WalkResult::Loop;
-        }
-        each_fn(&pos, &direction);
-        let Some(next_pos) = pos.checked_moved(&grid.dimensions, &direction) else {
-            return WalkResult::OutOfBounds;
-        };
-        let next = grid.get(&next_pos);
-        if matches!(next, Tile::Obstruction) || obstruction_test_fn(&next_pos) {
-            direction = direction.rotated(&RotationalDirection::Clockwise);
-        } else {
+    'next_direction: loop {
+        each_fn(&pos, &direction, &visited);
+        for next_pos in pos.positions(&grid.dimensions, &direction.clone()) {
+            let next = grid.get(&next_pos);
+
+            if matches!(next, Tile::Obstruction) || obstruction_test_fn(&next_pos) {
+                let pos_and_direction: u32 =
+                    ((pos.0 as u32) << 10) | ((pos.1 as u32) << 2) | direction as u32;
+                let previous_visit = visited.insert(pos_and_direction as usize);
+                if !previous_visit {
+                    return WalkResult::Loop;
+                }
+
+                direction = direction.rotated(&RotationalDirection::Clockwise);
+                continue 'next_direction;
+            }
+            each_fn(&next_pos, &direction, &visited);
             pos = next_pos;
         }
+        return WalkResult::OutOfBounds;
     }
 }
 
@@ -71,10 +81,11 @@ fn solve_both(input: &PreparedInput) -> (usize, usize) {
 
     let result = walk(
         input,
+        Default::default(),
         &pos,
-        &PositionOffset::up(),
+        &Direction::Up,
         |_| false,
-        |pos, direction| {
+        |pos, direction, visited_with_direction| {
             visited.insert(*pos);
 
             let Some(obstruction_pos) = pos.checked_moved(&input.dimensions, direction) else {
@@ -87,10 +98,11 @@ fn solve_both(input: &PreparedInput) -> (usize, usize) {
                 if matches!(
                     walk(
                         input,
+                        visited_with_direction.clone(),
                         pos,
                         &rotated_direction,
                         |pos| obstruction_pos == *pos,
-                        |_, _| {}
+                        |_, _, _| {}
                     ),
                     WalkResult::Loop
                 ) {

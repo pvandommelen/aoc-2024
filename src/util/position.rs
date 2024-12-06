@@ -88,40 +88,44 @@ impl Position {
         self.1
     }
 
-    fn can_move(&self, dimensions: &Dimensions, direction: &PositionOffset) -> bool {
-        self.0.wrapping_add_signed(direction.0) < dimensions.0
-            && self.1.wrapping_add_signed(direction.1) < dimensions.1
+    pub fn checked_moved(&self, dimensions: &Dimensions, direction: &Direction) -> Option<Self> {
+        self.checked_offset(dimensions, &direction.into())
     }
 
-    pub fn checked_moved(&self, dimensions: &Dimensions, offset: &PositionOffset) -> Option<Self> {
-        if self.can_move(dimensions, offset) {
-            Some(Self(
-                self.0.checked_add_signed(offset.0).unwrap(),
-                self.1.checked_add_signed(offset.1).unwrap(),
-            ))
-        } else {
+    pub fn checked_offset(&self, dimensions: &Dimensions, offset: &PositionOffset) -> Option<Self> {
+        let (y, y_overflow) = self.0.overflowing_add_signed(offset.0);
+        let (x, x_overflow) = self.1.overflowing_add_signed(offset.1);
+        if y_overflow || x_overflow || y >= dimensions.0 || x >= dimensions.1 {
             None
-        }
-    }
-
-    pub fn checked_move(&mut self, dimensions: &Dimensions, offset: &PositionOffset) -> bool {
-        if self.can_move(dimensions, offset) {
-            self.0 = self.0.checked_add_signed(offset.0).unwrap();
-            self.1 = self.1.checked_add_signed(offset.1).unwrap();
-            true
         } else {
-            false
+            Some(Self(y, x))
         }
-    }
-
-    pub fn moved(&self, offset: &PositionOffset) -> Self {
-        Self(
-            self.0.checked_add_signed(offset.0).unwrap(),
-            self.1.checked_add_signed(offset.1).unwrap(),
-        )
     }
 
     pub fn positions(
+        &self,
+        dimensions: &Dimensions,
+        direction: &Direction,
+    ) -> impl Iterator<Item = Position> + use<> {
+        let steps = match direction {
+            Direction::Up => self.0,
+            Direction::Right => dimensions.1 - self.1 - 1,
+            Direction::Down => dimensions.0 - self.0 - 1,
+            Direction::Left => self.1,
+        };
+
+        let s = *self;
+        let direction = *direction;
+
+        (1..steps + 1).map(move |i| match direction {
+            Direction::Up => Position::from_yx(s.0 - i, s.1),
+            Direction::Right => Position::from_yx(s.0, s.1 + i),
+            Direction::Down => Position::from_yx(s.0 + i, s.1),
+            Direction::Left => Position::from_yx(s.0, s.1 - i),
+        })
+    }
+
+    pub fn positions_steps(
         &self,
         dimensions: &Dimensions,
         offset: &PositionOffset,
@@ -160,6 +164,32 @@ impl Position {
         }
     }
 }
+struct StepIterator {
+    current: isize,
+    step: isize,
+    target: isize,
+}
+impl StepIterator {
+    fn new(init: usize, target: usize, step: isize) -> Self {
+        Self {
+            current: init as isize,
+            step,
+            target: target as isize,
+        }
+    }
+}
+impl Iterator for StepIterator {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current == self.target {
+            None
+        } else {
+            self.current += self.step;
+            Some(self.current as usize)
+        }
+    }
+}
 
 impl From<Position> for (usize, usize) {
     fn from(value: Position) -> Self {
@@ -187,5 +217,50 @@ impl AddAssign<PositionOffset> for Position {
     fn add_assign(&mut self, rhs: PositionOffset) {
         self.0 = self.0.checked_add_signed(rhs.0).unwrap();
         self.1 = self.1.checked_add_signed(rhs.1).unwrap();
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash)]
+pub enum Direction {
+    Up = 0,
+    Right = 1,
+    Down = 2,
+    Left = 3,
+}
+
+impl Direction {
+    #[must_use]
+    pub fn rotated(self, rotational_direction: &RotationalDirection) -> Self {
+        match (self, rotational_direction) {
+            (Direction::Up, RotationalDirection::Clockwise) => Direction::Right,
+            (Direction::Up, RotationalDirection::Anticlockwise) => Direction::Left,
+            (Direction::Down, RotationalDirection::Clockwise) => Direction::Left,
+            (Direction::Down, RotationalDirection::Anticlockwise) => Direction::Right,
+            (Direction::Right, RotationalDirection::Clockwise) => Direction::Down,
+            (Direction::Right, RotationalDirection::Anticlockwise) => Direction::Up,
+            (Direction::Left, RotationalDirection::Clockwise) => Direction::Up,
+            (Direction::Left, RotationalDirection::Anticlockwise) => Direction::Down,
+        }
+    }
+
+    #[must_use]
+    pub fn inverted(&self) -> Self {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Right => Direction::Left,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Right,
+        }
+    }
+}
+
+impl From<&Direction> for PositionOffset {
+    fn from(value: &Direction) -> Self {
+        match value {
+            Direction::Up => PositionOffset(-1, 0),
+            Direction::Right => PositionOffset(0, 1),
+            Direction::Down => PositionOffset(1, 0),
+            Direction::Left => PositionOffset(0, -1),
+        }
     }
 }

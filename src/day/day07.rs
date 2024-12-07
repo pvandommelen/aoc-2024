@@ -1,7 +1,5 @@
 use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
-use itertools::Itertools;
-use std::iter::repeat_n;
 use winnow::ascii::dec_uint;
 use winnow::combinator::{separated, separated_pair};
 use winnow::{PResult, Parser};
@@ -24,42 +22,50 @@ fn prepare(input: &str) -> PreparedInput {
     input.lines().map(|l| line.parse(l).unwrap()).collect()
 }
 
-fn calc(numbers: &[u64], operators: &[Operator]) -> u64 {
-    assert_eq!(numbers.len(), operators.len() + 1);
-    numbers
-        .iter()
-        .skip(1)
-        .zip(operators)
-        .fold(numbers[0], |current, (num, op)| match op {
-            Operator::Mul => current * num,
-            Operator::Add => current + num,
-            Operator::Concat => current * 10u64.pow(num.ilog10() + 1) + num,
-        })
+fn test_operator<const CONCAT_ENABLED: bool>(
+    op: Operator,
+    expected_result: u64,
+    current: u64,
+    numbers: &[u64],
+) -> bool {
+    let new_num = match op {
+        Operator::Mul => current * numbers[0],
+        Operator::Add => current + numbers[0],
+        Operator::Concat => current * 10u64.pow(numbers[0].ilog10() + 1) + numbers[0],
+    };
+    if numbers.len() == 1 {
+        return new_num == expected_result;
+    }
+    if expected_result < new_num {
+        return false;
+    }
+    test::<CONCAT_ENABLED>(expected_result, new_num, &numbers[1..])
 }
 
-fn test<const N: usize>(
-    expected_result: u64,
-    numbers: &[u64],
-    available_operators: [Operator; N],
-) -> bool {
-    repeat_n(available_operators, numbers.len() - 1)
-        .multi_cartesian_product()
-        .any(|c| calc(numbers, &c) == expected_result)
+fn test<const CONCAT_ENABLED: bool>(expected_result: u64, current: u64, numbers: &[u64]) -> bool {
+    if test_operator::<CONCAT_ENABLED>(Operator::Mul, expected_result, current, numbers) {
+        return true;
+    }
+    if test_operator::<CONCAT_ENABLED>(Operator::Add, expected_result, current, numbers) {
+        return true;
+    }
+    if CONCAT_ENABLED
+        && test_operator::<CONCAT_ENABLED>(Operator::Concat, expected_result, current, numbers)
+    {
+        return true;
+    }
+    false
 }
 
 fn solve_both(input: &PreparedInput) -> (u64, u64) {
     input
         .iter()
         .filter_map(|eq| {
-            let p1 = test(eq.0, &eq.1, [Operator::Mul, Operator::Add]);
+            let p1 = test::<false>(eq.0, eq.1[0], &eq.1[1..]);
             if p1 {
                 return Some((eq.0, eq.0));
             }
-            let p2 = test(eq.0, &eq.1, [
-                Operator::Mul,
-                Operator::Add,
-                Operator::Concat,
-            ]);
+            let p2 = test::<true>(eq.0, eq.1[0], &eq.1[1..]);
             if p2 {
                 return Some((0, eq.0));
             }

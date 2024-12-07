@@ -1,58 +1,48 @@
 use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
+use arrayvec::ArrayVec;
+use winnow::Parser;
 use winnow::ascii::dec_uint;
-use winnow::combinator::{separated, separated_pair};
-use winnow::{PResult, Parser};
 
-type Equation = (u64, Vec<u64>);
+type Equation = (u64, ArrayVec<u16, 12>);
 type PreparedInput = Vec<Equation>;
 
-#[derive(Debug, Copy, Clone)]
-enum Operator {
-    Mul,
-    Add,
-    Concat,
-}
-
-fn line(input: &mut &str) -> PResult<Equation, winnow::error::ContextError> {
-    separated_pair(dec_uint, ": ", separated(2.., dec_uint::<_, u64, _>, ' ')).parse_next(input)
+fn line(input: &str) -> Equation {
+    let mut input = input.as_bytes();
+    let a = dec_uint::<_, _, ()>(&mut input).unwrap();
+    let v = input[2..]
+        .split(|c| *c == b' ')
+        .map(|x| dec_uint::<_, u16, ()>.parse(x).unwrap())
+        .collect();
+    (a, v)
 }
 
 fn prepare(input: &str) -> PreparedInput {
-    input.lines().map(|l| line.parse(l).unwrap()).collect()
+    input.lines().map(line).collect()
 }
 
-fn test_operator<const CONCAT_ENABLED: bool>(
-    op: Operator,
-    expected_result: u64,
-    current: u64,
-    numbers: &[u64],
-) -> bool {
-    let new_num = match op {
-        Operator::Mul => current * numbers[0],
-        Operator::Add => current + numbers[0],
-        Operator::Concat => current * 10u64.pow(numbers[0].ilog10() + 1) + numbers[0],
-    };
-    if numbers.len() == 1 {
-        return new_num == expected_result;
+fn test<const CONCAT_ENABLED: bool>(numbers: &[u16], i: usize, expected_result: u64) -> bool {
+    let last_num = numbers[i] as u64;
+    if i == 0 {
+        return last_num == expected_result;
     }
-    if expected_result < new_num {
-        return false;
-    }
-    test::<CONCAT_ENABLED>(expected_result, new_num, &numbers[1..])
-}
-
-fn test<const CONCAT_ENABLED: bool>(expected_result: u64, current: u64, numbers: &[u64]) -> bool {
-    if test_operator::<CONCAT_ENABLED>(Operator::Mul, expected_result, current, numbers) {
-        return true;
-    }
-    if test_operator::<CONCAT_ENABLED>(Operator::Add, expected_result, current, numbers) {
-        return true;
-    }
-    if CONCAT_ENABLED
-        && test_operator::<CONCAT_ENABLED>(Operator::Concat, expected_result, current, numbers)
+    if expected_result % last_num == 0
+        && test::<CONCAT_ENABLED>(numbers, i - 1, expected_result / last_num)
     {
         return true;
+    }
+    if expected_result >= last_num
+        && test::<CONCAT_ENABLED>(numbers, i - 1, expected_result - last_num)
+    {
+        return true;
+    }
+    if CONCAT_ENABLED {
+        let factor = 10u64.pow(last_num.ilog10() + 1);
+        if expected_result % factor == last_num
+            && test::<CONCAT_ENABLED>(numbers, i - 1, expected_result / factor)
+        {
+            return true;
+        }
     }
     false
 }
@@ -61,11 +51,11 @@ fn solve_both(input: &PreparedInput) -> (u64, u64) {
     input
         .iter()
         .filter_map(|eq| {
-            let p1 = test::<false>(eq.0, eq.1[0], &eq.1[1..]);
+            let p1 = test::<false>(&eq.1, eq.1.len() - 1, eq.0);
             if p1 {
                 return Some((eq.0, eq.0));
             }
-            let p2 = test::<true>(eq.0, eq.1[0], &eq.1[1..]);
+            let p2 = test::<true>(&eq.1, eq.1.len() - 1, eq.0);
             if p2 {
                 return Some((0, eq.0));
             }

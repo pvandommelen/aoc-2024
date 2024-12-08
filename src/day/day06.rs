@@ -124,6 +124,7 @@ pub fn solve(ctx: &mut MeasureContext, input: &str) -> SolutionTuple {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::*;
 
     const EXAMPLE_INPUT: &str = "....#.....
 .........#
@@ -148,10 +149,11 @@ mod tests {
         assert_eq!(solve_both(&prepare(EXAMPLE_INPUT)).1, 6);
     }
 
-    #[test]
-    fn part2_cases() {
-        assert_eq!(solve_both(&prepare(".#.\n#^#\n...")).1, 1);
-        assert_eq!(solve_both(&prepare("...\n#^#\n.#.")).1, 1);
-        assert_eq!(solve_both(&prepare("...\n..#\n#^.\n.#.")).1, 1);
+    #[rstest]
+    #[case(".#.\n#^#\n...", 1)]
+    #[case("...\n#^#\n.#.", 1)]
+    #[case("...\n..#\n#^.\n.#.", 1)]
+    fn part2_extra(#[case] input: &str, #[case] expected: usize) {
+        assert_eq!(solve_both(&prepare(input)).1, expected);
     }
 }

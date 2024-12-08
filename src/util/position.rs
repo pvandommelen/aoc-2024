@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RotationalDirection {
@@ -152,16 +152,7 @@ impl Position {
     }
 
     pub fn manhattan_distance(&self, other: &Position) -> usize {
-        let num = if self.0 < other.0 {
-            other.0 - self.0
-        } else {
-            self.0 - other.0
-        };
-        num + if self.1 < other.1 {
-            other.1 - self.1
-        } else {
-            self.1 - other.1
-        }
+        self.0.abs_diff(other.0) + self.1.abs_diff(other.1)
     }
 }
 struct StepIterator {
@@ -217,6 +208,30 @@ impl AddAssign<PositionOffset> for Position {
     fn add_assign(&mut self, rhs: PositionOffset) {
         self.0 = self.0.checked_add_signed(rhs.0).unwrap();
         self.1 = self.1.checked_add_signed(rhs.1).unwrap();
+    }
+}
+impl Sub<Position> for Position {
+    type Output = PositionOffset;
+
+    fn sub(self, rhs: Position) -> Self::Output {
+        PositionOffset(
+            self.0 as isize - rhs.0 as isize,
+            self.1 as isize - rhs.1 as isize,
+        )
+    }
+}
+impl Div<isize> for PositionOffset {
+    type Output = PositionOffset;
+
+    fn div(self, rhs: isize) -> Self::Output {
+        PositionOffset(self.0 / rhs, self.1 / rhs)
+    }
+}
+impl Neg for PositionOffset {
+    type Output = PositionOffset;
+
+    fn neg(self) -> Self::Output {
+        PositionOffset(-self.0, -self.1)
     }
 }
 

@@ -32,6 +32,7 @@ fn main() {
         day05::solve,
         day06::solve,
         day07::solve,
+        day08::solve,
     ];
 
     let day_and_solver: Vec<_> = match args.day {

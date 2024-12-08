@@ -1,10 +1,10 @@
 use crate::solution::SolutionTuple;
-use crate::util::intset::ArraySet;
+use crate::util::intset::ArraySet64;
 use crate::util::measure::MeasureContext;
 
 struct PreparedInput {
     /// Indexed by second number to first number.
-    page_ordering_rules: Vec<ArraySet<100>>,
+    page_ordering_rules: Vec<ArraySet64<2>>,
     updates: Vec<Vec<u8>>,
 }
 
@@ -18,7 +18,7 @@ fn prepare(input: &str) -> PreparedInput {
 
     PreparedInput {
         page_ordering_rules: sections[0].lines().fold(
-            vec![ArraySet::<100>::new(); 100],
+            vec![ArraySet64::<2>::new(); 100],
             |mut map, l| {
                 let bytes = l.as_bytes();
                 assert_eq!(bytes.len(), 5);

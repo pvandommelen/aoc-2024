@@ -101,21 +101,19 @@ impl Debug for IntSet {
 }
 
 #[derive(Copy, Clone)]
-pub struct ArraySet<const N: usize>
+pub struct ArraySet64<const N: usize>
 where
-    [u64; N.div_ceil(64)]: Copy,
+    [u64; N]: Copy,
 {
-    data: [u64; N.div_ceil(64)],
+    data: [u64; N],
 }
 
-impl<const N: usize> ArraySet<N>
+impl<const N: usize> ArraySet64<N>
 where
-    [u64; N.div_ceil(64)]: Copy,
+    [u64; N]: Copy,
 {
-    pub fn new() -> ArraySet<N> {
-        ArraySet {
-            data: [0; N.div_ceil(64)],
-        }
+    pub fn new() -> ArraySet64<N> {
+        ArraySet64 { data: [0; N] }
     }
 
     pub fn insert<T>(&mut self, val: T)
@@ -123,7 +121,7 @@ where
         T: Into<usize>,
     {
         let val: usize = val.into();
-        assert!(val < N);
+        assert!(val < N * 64);
         let index = val / 64;
         let offset = val % 64;
         self.data[index] |= 1 << offset;
@@ -134,7 +132,7 @@ where
         T: Copy + Into<usize>,
     {
         let val = (*val).into();
-        assert!(val < N);
+        assert!(val < N * 64);
         let index = val / 64;
         let offset = val % 64;
         (self.data[index] & (1 << offset)) != 0
@@ -155,9 +153,9 @@ where
         self.data.iter().all(|val| val.count_ones() == 0)
     }
 }
-impl<const N: usize> Default for ArraySet<N>
+impl<const N: usize> Default for ArraySet64<N>
 where
-    [u64; N.div_ceil(64)]: Copy,
+    [u64; N]: Copy,
 {
     fn default() -> Self {
         Self::new()

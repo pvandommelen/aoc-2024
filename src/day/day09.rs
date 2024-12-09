@@ -1,5 +1,6 @@
 use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
+use std::array;
 
 type PreparedInput = Vec<u8>;
 
@@ -45,32 +46,57 @@ fn solve_part1(input: &PreparedInput) -> usize {
 }
 
 fn solve_part2(input: &PreparedInput) -> usize {
-    let (mut blocks, mut empty) = input
-        .iter()
-        .enumerate()
-        .scan(0usize, |pos, (i, num)| {
-            let up_to = *pos + (*num as usize);
-            let value = (i, *pos..up_to);
-            *pos = up_to;
-            Some(value)
-        })
-        .partition::<Vec<_>, _>(|(i, _)| *i % 2 == 0);
+    let mut pos = 0usize;
+    let mut blocks = Vec::with_capacity((input.len() + 1) / 2);
+    let mut empty: [Vec<_>; 9] = array::from_fn(|_| vec![]);
+    input.iter().enumerate().for_each(|(i, num)| {
+        let up_to = pos + (*num as usize);
+        let range = pos..up_to;
+        pos = up_to;
+        if i % 2 == 0 {
+            blocks.push((i / 2, range));
+        } else if *num > 0 {
+            empty[*num as usize - 1].push(range);
+        }
+    });
+    empty.iter_mut().for_each(|v| v.reverse());
+
+    assert_eq!(blocks.len(), (input.len() + 1) / 2);
 
     for block in blocks.iter_mut().rev() {
-        for space in empty.iter_mut() {
-            let block_len = block.1.len();
-            if space.1.len() >= block_len && space.1.start < block.1.start {
-                block.1.start = space.1.start;
-                block.1.end = space.1.start + block_len;
-                space.1.start += block_len;
-                break;
-            }
+        let block_len = block.1.len();
+        let Some((first, _)) = empty[block_len - 1..]
+            .iter()
+            .enumerate()
+            .filter_map(|(i, stack)| stack.last().map(|last| (i, last)))
+            .min_by_key(|(_, range)| range.start)
+        else {
+            continue;
+        };
+        let mut space = empty[block_len + first - 1].pop().unwrap();
+        if space.start >= block.1.start {
+            continue;
         }
+        block.1.start = space.start;
+        block.1.end = space.start + block_len;
+        space.start += block_len;
+
+        if space.is_empty() {
+            continue;
+        }
+        let empty_vec = &mut empty[space.len() - 1];
+        let existing_larger = empty_vec
+            .iter()
+            .enumerate()
+            .rfind(|(_, existing)| existing.start > space.start)
+            .map(|(i, _)| i + 1)
+            .unwrap_or(empty_vec.len());
+        empty_vec.insert(existing_larger, space);
     }
 
     blocks
         .into_iter()
-        .map(|(i, range)| range.map(|pos| pos * i / 2).sum::<usize>())
+        .map(|(id, range)| range.map(|pos| pos * id).sum::<usize>())
         .sum()
 }
 

@@ -14,43 +14,10 @@ fn prepare(input: &str) -> PreparedInput {
     )
 }
 
-fn solve_part1(input: &PreparedInput) -> usize {
+fn solve_both(input: &PreparedInput) -> (usize, usize) {
     let mut set = input
         .positions_where(|&num| num == 9)
-        .map(|pos| (pos, FxHashSet::from_iter([pos])))
-        .collect::<FxHashMap<_, _>>();
-
-    for i in (0..9).rev() {
-        set = input
-            .positions_where(|&num| num == i)
-            .map(|pos| {
-                (
-                    pos,
-                    [
-                        Direction::Up,
-                        Direction::Down,
-                        Direction::Left,
-                        Direction::Right,
-                    ]
-                    .iter()
-                    .filter_map(|direction| {
-                        pos.checked_moved(&input.dimensions, direction)
-                            .and_then(|above| set.get(&above).cloned())
-                    })
-                    .flatten()
-                    .collect::<FxHashSet<_>>(),
-                )
-            })
-            .collect::<FxHashMap<_, _>>();
-    }
-
-    set.values().map(|set| set.len()).sum()
-}
-
-fn solve_part2(input: &PreparedInput) -> usize {
-    let mut set = input
-        .positions_where(|&num| num == 9)
-        .map(|pos| (pos, 1))
+        .map(|pos| (pos, (FxHashSet::from_iter([pos]), 1)))
         .collect::<FxHashMap<_, _>>();
 
     for i in (0..9).rev() {
@@ -70,22 +37,26 @@ fn solve_part2(input: &PreparedInput) -> usize {
                         pos.checked_moved(&input.dimensions, direction)
                             .and_then(|above| set.get(&above))
                     })
-                    .sum(),
+                    .fold(
+                        (FxHashSet::default(), 0),
+                        |(mut set, mut count), (set_item, count_item)| {
+                            set.extend(set_item);
+                            count += count_item;
+                            (set, count)
+                        },
+                    ),
                 )
             })
             .collect::<FxHashMap<_, _>>();
     }
 
-    set.values().sum()
+    set.values()
+        .fold((0, 0), |(p1, p2), set| (p1 + set.0.len(), p2 + set.1))
 }
 
 pub fn solve(ctx: &mut MeasureContext, input: &str) -> SolutionTuple {
     let input = ctx.measure("prepare", || prepare(input));
-    (
-        ctx.measure("part1", || solve_part1(&input)),
-        ctx.measure("part2", || solve_part2(&input)),
-    )
-        .into()
+    ctx.measure("both", || solve_both(&input)).into()
 }
 
 #[cfg(test)]
@@ -106,10 +77,10 @@ mod tests {
     }
     #[test]
     fn example_part1() {
-        assert_eq!(solve_part1(&prepare(EXAMPLE_INPUT)), 36);
+        assert_eq!(solve_both(&prepare(EXAMPLE_INPUT)).0, 36);
     }
     #[test]
     fn example_part2() {
-        assert_eq!(solve_part2(&prepare(EXAMPLE_INPUT)), 81);
+        assert_eq!(solve_both(&prepare(EXAMPLE_INPUT)).1, 81);
     }
 }

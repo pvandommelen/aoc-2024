@@ -18,51 +18,45 @@ const DIRECTIONS: [Direction; 4] = [
     Direction::Right,
 ];
 
-fn solve_both(input: &PreparedInput) -> (u64, u64) {
-    let mut visited = FxHashSet::with_capacity_and_hasher(input.size(), Default::default());
+fn solve_both(input: &PreparedInput) -> (usize, usize) {
+    let mut visited = Grid::from_dimensions(input.dimensions, false);
 
     let mut p1 = 0;
     let mut p2 = 0;
     input.iter().for_each(|(pos, t)| {
-        if !visited.insert(pos) {
+        if !visited.insert(&pos) {
             return;
         }
 
         let mut area = 0;
-        let mut perimeter = 0;
-        let mut edges = FxHashSet::default();
-
+        let mut edges = FxHashSet::with_capacity_and_hasher(64, Default::default());
         solve_depth_first(
             |stack, pos| {
                 area += 1;
                 DIRECTIONS.iter().for_each(|&direction| {
                     if let Some(pos) = pos.checked_moved(&input.dimensions, &direction) {
                         if input.get(&pos) == t {
-                            if visited.insert(pos) {
+                            if visited.insert(&pos) {
                                 stack.push(pos);
                             }
                             return;
                         }
                     }
 
-                    perimeter += 1;
                     edges.insert((pos, direction));
                 })
             },
             vec![pos],
         );
 
+        let perimeter = edges.len();
+
         let mut sides = 0;
-        while let Some((pos, direction)) = edges
-            .iter()
-            .next()
-            .cloned()
-            .map(|edge| edges.take(&edge).unwrap())
-        {
+        while let Some((pos, direction)) = edges.iter().next().cloned() {
             sides += 1;
             match direction {
                 Direction::Up | Direction::Down => {
-                    for x in pos.1 + 1..input.dimensions.1 {
+                    for x in pos.1..input.dimensions.1 {
                         if !edges.remove(&((pos.0, x).into(), direction)) {
                             break;
                         }
@@ -74,7 +68,7 @@ fn solve_both(input: &PreparedInput) -> (u64, u64) {
                     }
                 }
                 Direction::Right | Direction::Left => {
-                    for y in pos.0 + 1..input.dimensions.0 {
+                    for y in pos.0..input.dimensions.0 {
                         if !edges.remove(&((y, pos.1).into(), direction)) {
                             break;
                         }
@@ -132,7 +126,7 @@ MMMISSJEEE";
     #[case(SECOND_EXAMPLE, 772)]
     #[case(THIRD_EXAMPLE, 1930)]
     #[test]
-    fn part1(#[case] input: &str, #[case] expected: u64) {
+    fn part1(#[case] input: &str, #[case] expected: usize) {
         assert_eq!(solve_both(&prepare(input)).0, expected);
     }
 
@@ -158,7 +152,7 @@ AAAAAA",
     )]
     #[case(THIRD_EXAMPLE, 1206)]
     #[test]
-    fn part2(#[case] input: &str, #[case] expected: u64) {
+    fn part2(#[case] input: &str, #[case] expected: usize) {
         assert_eq!(solve_both(&prepare(input)).1, expected);
     }
 }

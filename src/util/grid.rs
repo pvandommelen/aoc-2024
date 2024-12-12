@@ -174,6 +174,16 @@ impl Grid<bool> {
         }
     }
 
+    pub fn remove(&mut self, pos: &Position) -> bool {
+        let entry = self.get_mut(pos);
+        if *entry {
+            *entry = false;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn extend_from_grid(&mut self, other: &Grid<bool>) {
         assert_eq!(self.dimensions, other.dimensions);
         self.data

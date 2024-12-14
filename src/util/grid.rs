@@ -147,6 +147,15 @@ impl<A> Extend<((usize, usize), A)> for Grid<A> {
 }
 
 impl Grid<bool> {
+    pub fn from_positions<I: Iterator<Item = Position> + Clone>(
+        dimensions: Dimensions,
+        iter: I,
+    ) -> Self {
+        let mut grid = Self::from_dimensions(dimensions, false);
+        grid.extend(iter);
+        grid
+    }
+
     pub fn from_points<I: Iterator<Item = (usize, usize)> + Clone>(iter: I) -> Self {
         let mut max_x = usize::MIN;
         let mut max_y = usize::MIN;

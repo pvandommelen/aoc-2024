@@ -4,7 +4,7 @@ use winnow::{PResult, Parser};
 
 type PreparedInput = Vec<i64>;
 
-fn line(input: &mut &str) -> PResult<i64, winnow::error::ContextError> {
+fn line(input: &mut &str) -> PResult<i64> {
     winnow::ascii::dec_int.parse_next(input)
 }
 

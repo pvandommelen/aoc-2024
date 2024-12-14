@@ -102,6 +102,17 @@ impl Position {
         }
     }
 
+    pub fn wrapping_offset(&self, dimensions: &Dimensions, offset: &PositionOffset) -> Self {
+        let offset_wrapped = PositionOffset(
+            offset.0 % dimensions.0 as isize + dimensions.0 as isize,
+            offset.1 % dimensions.1 as isize + dimensions.1 as isize,
+        );
+        Self(
+            (self.0 + offset_wrapped.0 as usize) % dimensions.0,
+            (self.1 + offset_wrapped.1 as usize) % dimensions.1,
+        )
+    }
+
     pub fn positions(
         &self,
         dimensions: &Dimensions,
@@ -232,6 +243,13 @@ impl Neg for PositionOffset {
 
     fn neg(self) -> Self::Output {
         PositionOffset(-self.0, -self.1)
+    }
+}
+impl Mul<isize> for PositionOffset {
+    type Output = PositionOffset;
+
+    fn mul(self, rhs: isize) -> Self::Output {
+        PositionOffset(rhs * self.0, rhs * self.1)
     }
 }
 

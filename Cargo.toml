@@ -26,3 +26,7 @@ rstest = { version = "0.23.0", default-features = false }
 [profile.bench]
 lto = true
 codegen-units = 1
+
+[profile.profiling]
+inherits = "release"
+debug = "limited"

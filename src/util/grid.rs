@@ -203,6 +203,10 @@ impl Grid<bool> {
             });
     }
 
+    pub fn clear(&mut self) {
+        self.data.iter_mut().for_each(|elem| *elem = false);
+    }
+
     pub fn count(&self) -> usize {
         self.values().filter(|value| **value).count()
     }

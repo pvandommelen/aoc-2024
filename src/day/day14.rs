@@ -49,22 +49,21 @@ fn solve_part1(input: &PreparedInput, dimensions: &Dimensions) -> usize {
 }
 
 fn solve_part2(input: &PreparedInput, dimensions: &Dimensions) -> usize {
-    for i in 0usize.. {
-        let grid = Grid::<bool>::from_positions(
-            *dimensions,
-            input.iter().map(|robot| {
-                robot
-                    .pos
-                    .wrapping_offset(dimensions, &(robot.vel * i as isize))
-            }),
-        );
-
-        if grid.count() != input.len() {
-            continue;
+    let mut grid = Grid::from_dimensions(*dimensions, false);
+    'next_second: for i in 0usize.. {
+        let positions = input.iter().map(|robot| {
+            robot
+                .pos
+                .wrapping_offset(dimensions, &(robot.vel * i as isize))
+        });
+        for pos in positions {
+            if !grid.insert(&pos) {
+                grid.clear();
+                continue 'next_second;
+            }
         }
 
         // println!("{}", grid);
-
         return i;
     }
     panic!();

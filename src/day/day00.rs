@@ -9,7 +9,10 @@ fn line(input: &mut &str) -> PResult<i64> {
 }
 
 fn prepare(input: &str) -> PreparedInput {
-    input.lines().map(|l| line.parse(l).unwrap()).collect()
+    input
+        .lines()
+        .map(|l| line.parse(l).unwrap_or_else(|e| panic!("{}", e)))
+        .collect()
 }
 
 fn solve_part1(input: &PreparedInput) -> usize {

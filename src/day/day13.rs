@@ -51,7 +51,7 @@ fn prepare(input: &str) -> PreparedInput {
 
     input
         .split("\n\n")
-        .map(|l| machine.parse(l).unwrap())
+        .map(|l| machine.parse(l).unwrap_or_else(|e| panic!("{}", e)))
         .collect()
 }
 

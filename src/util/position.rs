@@ -88,8 +88,19 @@ impl Position {
         self.1
     }
 
+    pub fn moved(&self, direction: &Direction) -> Self {
+        self.offset(&direction.into())
+    }
+
     pub fn checked_moved(&self, dimensions: &Dimensions, direction: &Direction) -> Option<Self> {
         self.checked_offset(dimensions, &direction.into())
+    }
+
+    pub fn offset(&self, offset: &PositionOffset) -> Self {
+        Self(
+            (self.0 as isize + offset.0) as usize,
+            (self.1 as isize + offset.1) as usize,
+        )
     }
 
     pub fn checked_offset(&self, dimensions: &Dimensions, offset: &PositionOffset) -> Option<Self> {
@@ -117,7 +128,7 @@ impl Position {
         &self,
         dimensions: &Dimensions,
         direction: &Direction,
-    ) -> impl Iterator<Item = Position> + use<> {
+    ) -> impl Iterator<Item = Position> + use<> + Clone {
         let steps = match direction {
             Direction::Up => self.0,
             Direction::Right => dimensions.1 - self.1 - 1,
@@ -140,7 +151,7 @@ impl Position {
         &self,
         dimensions: &Dimensions,
         offset: &PositionOffset,
-    ) -> impl Iterator<Item = Position> {
+    ) -> impl Iterator<Item = Position> + Clone {
         assert!(offset.0 != 0 || offset.1 != 0);
 
         let steps_y = if offset.0 == 0 {

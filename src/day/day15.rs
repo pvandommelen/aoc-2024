@@ -113,29 +113,30 @@ fn try_move(
     grid: &Grid<ScaledTile>,
     position: &Position,
     direction: &Direction,
-) -> Option<Vec<Position>> {
+    boxes_to_move: &mut Vec<Position>,
+) -> bool {
     let next_position = position.moved(direction);
     let tile = grid.get(&next_position);
     match tile {
-        ScaledTile::Empty => Some(vec![]),
-        ScaledTile::Wall => None,
+        ScaledTile::Empty => true,
+        ScaledTile::Wall => false,
         ScaledTile::Box => {
             let box_position = next_position;
             let right_side_box_position = next_position.moved(&Direction::Right);
             match direction {
-                Direction::Up | Direction::Down => try_move(grid, &box_position, direction)
-                    .and_then(|mut v| {
-                        try_move(grid, &right_side_box_position, direction).map(|v2| {
-                            v.extend(v2);
-                            v.push(box_position);
-                            v
-                        })
-                    }),
+                Direction::Up | Direction::Down => {
+                    try_move(grid, &box_position, direction, boxes_to_move)
+                        && try_move(grid, &right_side_box_position, direction, boxes_to_move)
+                        && {
+                            boxes_to_move.push(box_position);
+                            true
+                        }
+                }
                 Direction::Right => {
-                    try_move(grid, &right_side_box_position, direction).map(|mut v| {
-                        v.push(next_position);
-                        v
-                    })
+                    try_move(grid, &right_side_box_position, direction, boxes_to_move) && {
+                        boxes_to_move.push(box_position);
+                        true
+                    }
                 }
                 Direction::Left => unreachable!(),
             }
@@ -144,19 +145,21 @@ fn try_move(
             let box_position = next_position.moved(&Direction::Left);
             let right_side_box_position = next_position;
             match direction {
-                Direction::Up | Direction::Down => try_move(grid, &box_position, direction)
-                    .and_then(|mut v| {
-                        try_move(grid, &right_side_box_position, direction).map(|v2| {
-                            v.extend(v2);
-                            v.push(box_position);
-                            v
-                        })
-                    }),
+                Direction::Up | Direction::Down => {
+                    try_move(grid, &box_position, direction, boxes_to_move)
+                        && try_move(grid, &right_side_box_position, direction, boxes_to_move)
+                        && {
+                            boxes_to_move.push(box_position);
+                            true
+                        }
+                }
                 Direction::Right => unreachable!(),
-                Direction::Left => try_move(grid, &box_position, direction).map(|mut v| {
-                    v.push(box_position);
-                    v
-                }),
+                Direction::Left => {
+                    try_move(grid, &box_position, direction, boxes_to_move) && {
+                        boxes_to_move.push(box_position);
+                        true
+                    }
+                }
             }
         }
     }
@@ -173,9 +176,12 @@ fn solve_part2(input: &PreparedInput) -> usize {
         })
     }));
 
+    let mut moved_boxes = vec![];
+
     let mut position = Position(starting_position.0, starting_position.1 * 2);
     for mov in movements {
-        let Some(moved_boxes) = try_move(&grid, &position, mov) else {
+        moved_boxes.truncate(0);
+        if !try_move(&grid, &position, mov, &mut moved_boxes) {
             continue;
         };
 

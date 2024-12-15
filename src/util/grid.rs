@@ -96,6 +96,12 @@ impl<T> Grid<T> {
         &self.data[self.index(pos)]
     }
 
+    /// # Safety
+    /// Position argument must be within boundaries.
+    pub unsafe fn get_unchecked(&self, pos: &Position) -> &T {
+        unsafe { self.data.get_unchecked(self.index(pos)) }
+    }
+
     pub fn get_mut(&mut self, pos: &Position) -> &mut T {
         let i = self.index(pos);
         &mut self.data[i]

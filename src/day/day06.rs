@@ -48,8 +48,8 @@ fn walk(
 
     'next_direction: loop {
         each_fn(&pos, &direction, &visited);
-        for next_pos in pos.positions(&grid.dimensions, &direction.clone()) {
-            let next = grid.get(&next_pos);
+        for next_pos in pos.positions(&grid.dimensions, &direction) {
+            let next = unsafe { grid.get_unchecked(&next_pos) };
 
             if matches!(next, Tile::Obstruction) || obstruction_test_fn(&next_pos) {
                 let pos_and_direction: u32 =
@@ -81,7 +81,7 @@ fn solve_both(input: &PreparedInput) -> (usize, usize) {
 
     let result = walk(
         input,
-        Default::default(),
+        IntSet::with_maximum(input.dimensions.0 << 10),
         &pos,
         &Direction::Up,
         |_| false,
@@ -91,7 +91,7 @@ fn solve_both(input: &PreparedInput) -> (usize, usize) {
             let Some(obstruction_pos) = pos.checked_moved(&input.dimensions, direction) else {
                 return;
             };
-            let obstruction_tile = input.get(&obstruction_pos);
+            let obstruction_tile = unsafe { input.get_unchecked(&obstruction_pos) };
 
             if matches!(obstruction_tile, Tile::Empty) && !visited.contains(&obstruction_pos) {
                 let rotated_direction = direction.rotated(&RotationalDirection::Clockwise);

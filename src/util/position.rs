@@ -98,8 +98,8 @@ impl Position {
 
     pub fn offset(&self, offset: &PositionOffset) -> Self {
         Self(
-            (self.0 as isize + offset.0) as usize,
-            (self.1 as isize + offset.1) as usize,
+            self.0.wrapping_add_signed(offset.0),
+            self.1.wrapping_add_signed(offset.1),
         )
     }
 
@@ -114,13 +114,17 @@ impl Position {
     }
 
     pub fn wrapping_offset(&self, dimensions: &Dimensions, offset: &PositionOffset) -> Self {
-        let offset_wrapped = PositionOffset(
-            offset.0 % dimensions.0 as isize + dimensions.0 as isize,
-            offset.1 % dimensions.1 as isize + dimensions.1 as isize,
+        let offset_wrapped = (
+            dimensions.0.wrapping_add_signed(
+                offset.0.wrapping_add_unsigned(self.0) % dimensions.0 as isize,
+            ),
+            dimensions.1.wrapping_add_signed(
+                offset.1.wrapping_add_unsigned(self.1) % dimensions.1 as isize,
+            ),
         );
         Self(
-            (self.0 + offset_wrapped.0 as usize) % dimensions.0,
-            (self.1 + offset_wrapped.1 as usize) % dimensions.1,
+            offset_wrapped.0 % dimensions.0,
+            offset_wrapped.1 % dimensions.1,
         )
     }
 
@@ -136,14 +140,13 @@ impl Position {
             Direction::Left => self.1,
         };
 
+        let offset: PositionOffset = direction.into();
         let s = *self;
-        let direction = *direction;
-
-        (1..steps + 1).map(move |i| match direction {
-            Direction::Up => Position::from_yx(s.0 - i, s.1),
-            Direction::Right => Position::from_yx(s.0, s.1 + i),
-            Direction::Down => Position::from_yx(s.0 + i, s.1),
-            Direction::Left => Position::from_yx(s.0, s.1 - i),
+        (1..steps as isize + 1).map(move |i| {
+            Position::from_yx(
+                s.0.wrapping_add_signed(offset.0 * i),
+                s.1.wrapping_add_signed(offset.1 * i),
+            )
         })
     }
 
@@ -170,7 +173,8 @@ impl Position {
         };
         let steps = steps_y.min(steps_x);
 
-        (0..steps).map(move |i| *self + offset * (i + 1))
+        let s = *self;
+        (1..steps + 1).map(move |i| s + offset * i)
     }
 
     pub fn manhattan_distance(&self, other: &Position) -> usize {

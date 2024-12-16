@@ -38,15 +38,15 @@ mod tests {
 
     const EXAMPLE_INPUT: &str = "";
     #[test]
-    fn example_prepare() {
+    fn prepare_example() {
         assert_eq!(prepare(EXAMPLE_INPUT).len(), 0);
     }
     #[test]
-    fn example_part1() {
+    fn part1_example() {
         assert_eq!(solve_part1(&prepare(EXAMPLE_INPUT)), 0);
     }
     #[test]
-    fn example_part2() {
+    fn part2_example() {
         assert_eq!(solve_part2(&prepare(EXAMPLE_INPUT)), 0);
     }
 }

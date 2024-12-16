@@ -1,3 +1,6 @@
+use std::collections::BinaryHeap;
+use std::ops::ControlFlow;
+
 /// Push/pop stack implementation with an optimization for the last entry.
 pub struct StateStack<S> {
     next: Option<S>,
@@ -31,4 +34,20 @@ where
     while let Some(current) = stack.pop() {
         next(&mut stack, current);
     }
+}
+
+pub fn solve_priority<F, S>(mut next: F, states: Vec<S>) -> Option<S>
+where
+    S: Ord,
+    F: FnMut(&mut BinaryHeap<S>, &S) -> ControlFlow<()>,
+{
+    let mut stack = states.into_iter().collect::<BinaryHeap<_>>();
+
+    while let Some(current) = stack.pop() {
+        match next(&mut stack, &current) {
+            ControlFlow::Continue(_) => {}
+            ControlFlow::Break(_) => return Some(current),
+        }
+    }
+    None
 }

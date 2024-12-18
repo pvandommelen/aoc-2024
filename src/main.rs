@@ -3,7 +3,7 @@ use aoc_2024::solution::SolutionTuple;
 use aoc_2024::util::measure::MeasureContext;
 use clap::Parser;
 use std::hint::black_box;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -54,42 +54,49 @@ fn main() {
         Some(d) => vec![(d, all_days[d - 1], read_input(d))],
     };
 
-    day_and_solver.into_iter().for_each(|(day, solver, input)| {
-        {
-            let mut ctx = MeasureContext::new();
+    let total_duration = day_and_solver
+        .into_iter()
+        .map(|(day, solver, input)| {
+            {
+                let mut ctx = MeasureContext::new();
 
-            for _ in 0..args.warmup {
+                for _ in 0..args.warmup {
+                    black_box(solver(&mut ctx, black_box(&input)));
+                }
+            }
+
+            let mut ctx = MeasureContext::new();
+            let start = Instant::now();
+            for _ in 0..args.repeat - 1 {
                 black_box(solver(&mut ctx, black_box(&input)));
             }
-        }
+            let SolutionTuple(p1, p2) = solver(&mut ctx, black_box(&input));
+            let end = Instant::now();
 
-        let mut ctx = MeasureContext::new();
-        let start = Instant::now();
-        for _ in 0..args.repeat - 1 {
-            black_box(solver(&mut ctx, black_box(&input)));
-        }
-        let SolutionTuple(p1, p2) = solver(&mut ctx, black_box(&input));
-        let end = Instant::now();
-
-        println!("day{}/part1: {}", day, p1);
-        println!("day{}/part2: {}", day, p2);
-        println!(
-            "day{}/solve_time: {:?}{}",
-            day,
-            (end - start) / args.repeat,
-            if ctx.measurements().next().is_none() {
-                "".to_string()
-            } else {
-                format!(
-                    " ({})",
-                    ctx.measurements()
-                        .map(|(label, duration)| {
-                            format!("{}: {:?}", label, duration / args.repeat)
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            }
-        );
-    });
+            println!("day{}/part1: {}", day, p1);
+            println!("day{}/part2: {}", day, p2);
+            println!(
+                "day{}/solve_time: {:?}{}",
+                day,
+                (end - start) / args.repeat,
+                if ctx.measurements().next().is_none() {
+                    "".to_string()
+                } else {
+                    format!(
+                        " ({})",
+                        ctx.measurements()
+                            .map(|(label, duration)| {
+                                format!("{}: {:?}", label, duration / args.repeat)
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                }
+            );
+            (end - start) / args.repeat
+        })
+        .sum::<Duration>();
+    if args.day.is_none() {
+        println!("Total solve time: {:?}", total_duration);
+    }
 }

@@ -1,3 +1,4 @@
+use rustc_hash::FxHashSet;
 use std::collections::BinaryHeap;
 use std::ops::ControlFlow;
 
@@ -33,6 +34,59 @@ where
 
     while let Some(current) = stack.pop() {
         next(&mut stack, current);
+    }
+}
+
+pub fn solve_breadth_first_dedup<F, S>(
+    mut next: F,
+    states: impl IntoIterator<Item = S>,
+) -> Option<(S, usize)>
+where
+    F: FnMut(&mut FxHashSet<S>, &S, usize) -> ControlFlow<()>,
+    S: std::hash::Hash + Eq,
+{
+    let mut round = 0;
+    let mut states: FxHashSet<_> = states.into_iter().collect();
+    let mut next_states = FxHashSet::default();
+
+    loop {
+        for state in states.drain() {
+            match next(&mut next_states, &state, round) {
+                ControlFlow::Break(_) => return Some((state, round)),
+                ControlFlow::Continue(_) => {}
+            };
+        }
+        if next_states.is_empty() {
+            return None;
+        }
+        std::mem::swap(&mut states, &mut next_states);
+        round += 1;
+    }
+}
+
+pub fn solve_breadth_first<F, S>(
+    mut next: F,
+    states: impl IntoIterator<Item = S>,
+) -> Option<(S, usize)>
+where
+    F: FnMut(&mut Vec<S>, &S, usize) -> ControlFlow<()>,
+{
+    let mut round = 0;
+    let mut states: Vec<_> = states.into_iter().collect();
+    let mut next_states = Vec::default();
+
+    loop {
+        for state in states.drain(..) {
+            match next(&mut next_states, &state, round) {
+                ControlFlow::Break(_) => return Some((state, round)),
+                ControlFlow::Continue(_) => {}
+            };
+        }
+        if next_states.is_empty() {
+            return None;
+        }
+        std::mem::swap(&mut states, &mut next_states);
+        round += 1;
     }
 }
 

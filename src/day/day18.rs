@@ -2,7 +2,7 @@ use crate::solution::SolutionTuple;
 use crate::util::grid::Grid;
 use crate::util::measure::MeasureContext;
 use crate::util::position::{Dimensions, Direction, Position};
-use crate::util::solver::solve_priority;
+use crate::util::solver::solve_breadth_first;
 use std::cmp::Ordering;
 use std::ops::ControlFlow;
 use winnow::ascii::dec_uint;
@@ -24,29 +24,6 @@ fn prepare(input: &str) -> PreparedInput {
         .collect()
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-struct State {
-    position: Position,
-    end_position: Position,
-    steps: usize,
-}
-impl State {
-    fn score(&self) -> usize {
-        self.steps + self.position.manhattan_distance(&self.end_position)
-    }
-}
-
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.score().cmp(&other.score()).reverse()
-    }
-}
-
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
 const DIRECTIONS: [Direction; 4] = [
     Direction::Up,
     Direction::Down,
@@ -54,17 +31,17 @@ const DIRECTIONS: [Direction; 4] = [
     Direction::Right,
 ];
 
-fn attempt(input: &PreparedInput, dimensions: Dimensions, limit: usize) -> Option<State> {
-    let mut grid = Grid::<bool>::from_positions(dimensions, input.iter().take(limit).cloned());
+fn attempt(mut grid: Grid<bool>) -> Option<usize> {
+    let end_position = Position(grid.dimensions.0 - 1, grid.dimensions.1 - 1);
 
-    let s = solve_priority(
-        |stack, s| {
-            if s.position == s.end_position {
+    solve_breadth_first(
+        |stack, position, _| {
+            if *position == end_position {
                 return ControlFlow::Break(());
             }
 
             for direction in &DIRECTIONS {
-                let Some(next_position) = s.position.checked_moved(&grid.dimensions, direction)
+                let Some(next_position) = position.checked_moved(&grid.dimensions, direction)
                 else {
                     continue;
                 };
@@ -72,36 +49,40 @@ fn attempt(input: &PreparedInput, dimensions: Dimensions, limit: usize) -> Optio
                 if !available {
                     continue;
                 }
-                stack.push(State {
-                    position: next_position,
-                    end_position: s.end_position,
-                    steps: s.steps + 1,
-                });
+                stack.push(next_position);
             }
 
             ControlFlow::Continue(())
         },
-        vec![State {
-            position: Position(0, 0),
-            end_position: Position(dimensions.0 - 1, dimensions.1 - 1),
-            steps: 0,
-        }],
-    );
-
-    s
+        vec![Position(0, 0)],
+    )
+    .map(|(_, steps)| steps)
 }
 
 fn solve_part1(input: &PreparedInput, dimensions: Dimensions, limit: usize) -> usize {
-    attempt(input, dimensions, limit).map(|s| s.steps).unwrap()
+    let grid = Grid::<bool>::from_positions(dimensions, input.iter().take(limit).cloned());
+    attempt(grid).unwrap()
 }
 
 fn solve_part2(input: &PreparedInput, dimensions: Dimensions, skip: usize) -> String {
-    for (i, byte) in input.iter().enumerate().skip(skip) {
-        if attempt(input, dimensions, i + 1).map(|s| s.steps).is_none() {
-            return format!("{},{}", byte.1, byte.0);
+    let grid = Grid::<bool>::from_positions(dimensions, input[0..skip].iter().cloned());
+
+    let indices = (skip..input.len()).collect::<Vec<_>>();
+    let found = indices.binary_search_by(|i| {
+        let mut grid = grid.clone();
+        grid.extend(input[skip..*i].iter().copied());
+        match attempt(grid) {
+            None => Ordering::Greater,
+            Some(_) => Ordering::Less,
+        }
+    });
+    match found {
+        Ok(_) => unreachable!(),
+        Err(offset) => {
+            let byte = input[skip + offset - 1];
+            format!("{},{}", byte.1, byte.0)
         }
     }
-    panic!("End always reachable");
 }
 
 pub fn solve(ctx: &mut MeasureContext, input: &str) -> SolutionTuple {

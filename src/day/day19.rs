@@ -1,31 +1,74 @@
+#![allow(clippy::needless_range_loop)]
+
 use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use std::fmt::Debug;
-use std::str::FromStr;
 
-#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 struct Towel(Vec<u8>);
-impl FromStr for Towel {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Towel(s.as_bytes().to_vec()))
-    }
-}
 impl From<&str> for Towel {
     fn from(value: &str) -> Self {
-        value.parse().unwrap()
-    }
-}
-impl Debug for Towel {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        std::str::from_utf8(&self.0).unwrap().fmt(f)
+        Self(value.as_bytes().to_vec())
     }
 }
 
-type PreparedInput = (FxHashSet<Towel>, Vec<Towel>);
+#[derive(Clone, Eq, PartialEq, Hash)]
+struct PartialTowel<'a>(&'a [u8]);
+impl<'a> From<&'a str> for PartialTowel<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value.as_bytes())
+    }
+}
+impl<'a> From<&'a Towel> for PartialTowel<'a> {
+    fn from(towel: &'a Towel) -> Self {
+        PartialTowel(towel.0.as_slice())
+    }
+}
+
+#[derive(Default)]
+struct TowelSet<'a> {
+    w: FxHashSet<&'a [u8]>,
+    u: FxHashSet<&'a [u8]>,
+    b: FxHashSet<&'a [u8]>,
+    r: FxHashSet<&'a [u8]>,
+    g: FxHashSet<&'a [u8]>,
+    largest: usize,
+}
+impl<'a> TowelSet<'a> {
+    fn contains(&self, t: &PartialTowel) -> bool {
+        match t.0[0] {
+            b'w' => self.w.contains(&t.0[1..]),
+            b'u' => self.u.contains(&t.0[1..]),
+            b'b' => self.b.contains(&t.0[1..]),
+            b'r' => self.r.contains(&t.0[1..]),
+            b'g' => self.g.contains(&t.0[1..]),
+            _ => unreachable!(),
+        }
+    }
+    fn insert(&mut self, t: PartialTowel<'a>) -> bool {
+        self.largest = self.largest.max(t.0.len());
+        match t.0[0] {
+            b'w' => self.w.insert(&t.0[1..]),
+            b'u' => self.u.insert(&t.0[1..]),
+            b'b' => self.b.insert(&t.0[1..]),
+            b'r' => self.r.insert(&t.0[1..]),
+            b'g' => self.g.insert(&t.0[1..]),
+            _ => unreachable!(),
+        }
+    }
+}
+impl<'a> FromIterator<PartialTowel<'a>> for TowelSet<'a> {
+    fn from_iter<I: IntoIterator<Item = PartialTowel<'a>>>(iter: I) -> Self {
+        let mut set = TowelSet::default();
+        for towel in iter {
+            set.insert(towel);
+        }
+        set
+    }
+}
+
+type PreparedInput<'a> = (TowelSet<'a>, Vec<Towel>);
 
 fn prepare(input: &str) -> PreparedInput {
     let mut sections = input.split("\n\n");
@@ -39,78 +82,46 @@ fn prepare(input: &str) -> PreparedInput {
     )
 }
 
-fn is_possible(available: &FxHashSet<Towel>, target: &Towel, cache: &mut [bool]) -> bool {
-    if !cache[0] {
-        return false;
-    }
-    if available.contains(target) {
-        return true;
-    }
-    for i in (1..target.0.len()).rev() {
-        if available.contains(&Towel(target.0[0..i].to_vec()))
-            && is_possible(available, &Towel(target.0[i..].to_owned()), &mut cache[i..])
-        {
-            return true;
+fn get_number_of_combinations(available: &TowelSet, target: &Towel) -> u64 {
+    let mut cache = vec![0; target.0.len()];
+
+    for offset in (0..target.0.len()).rev() {
+        let remaining_length = (target.0.len() - offset).min(available.largest);
+
+        let mut sum = 0;
+        for i in offset + 1..offset + remaining_length + 1 {
+            if !available.contains(&PartialTowel(&target.0[offset..i])) {
+                continue;
+            }
+            if i == target.0.len() {
+                sum += 1;
+            } else {
+                sum += cache[i];
+            }
         }
+        cache[offset] = sum;
     }
-    cache[0] = false;
-    false
+
+    cache[0]
 }
 
-fn solve_part1(input: &PreparedInput) -> usize {
+fn solve_both(input: &PreparedInput) -> (usize, u64) {
     let (available, target) = input;
     target
         .iter()
-        .filter(|&target| {
-            let mut cache = vec![true; available.len()];
-            is_possible(available, target, &mut cache)
+        .map(|target| get_number_of_combinations(available, target))
+        .fold((0, 0), |(mut count, mut sum), res| {
+            sum += res;
+            if res > 0 {
+                count += 1;
+            }
+            (count, sum)
         })
-        .count()
-}
-
-fn get_number_of_combinations(
-    available: &FxHashSet<Towel>,
-    target: &Towel,
-    cache: &mut [u64],
-) -> u64 {
-    if cache[0] != u64::MAX {
-        return cache[0];
-    }
-    let mut sum = 0;
-    if available.contains(target) {
-        sum += 1;
-    }
-    for i in (1..target.0.len()).rev() {
-        if available.contains(&Towel(target.0[0..i].to_vec())) {
-            sum += get_number_of_combinations(
-                available,
-                &Towel(target.0[i..].to_owned()),
-                &mut cache[i..],
-            );
-        }
-    }
-    cache[0] = sum;
-    sum
-}
-
-fn solve_part2(input: &PreparedInput) -> u64 {
-    let (available, target) = input;
-    target
-        .iter()
-        .map(|target| {
-            let mut cache = vec![u64::MAX; available.len()];
-            get_number_of_combinations(available, target, &mut cache)
-        })
-        .sum()
 }
 
 pub fn solve(ctx: &mut MeasureContext, input: &str) -> SolutionTuple {
     let input = ctx.measure("prepare", || prepare(input));
-    (
-        ctx.measure("part1", || solve_part1(&input)),
-        ctx.measure("part2", || solve_part2(&input)),
-    )
-        .into()
+    ctx.measure("both", || solve_both(&input)).into()
 }
 
 #[cfg(test)]
@@ -130,15 +141,14 @@ bbrgwb";
     #[test]
     fn prepare_example() {
         let prepared = prepare(EXAMPLE_INPUT);
-        assert_eq!(prepared.0.len(), 8);
         assert_eq!(prepared.1.len(), 8);
     }
     #[test]
     fn part1_example() {
-        assert_eq!(solve_part1(&prepare(EXAMPLE_INPUT)), 6);
+        assert_eq!(solve_both(&prepare(EXAMPLE_INPUT)).0, 6);
     }
     #[test]
     fn part2_example() {
-        assert_eq!(solve_part2(&prepare(EXAMPLE_INPUT)), 16);
+        assert_eq!(solve_both(&prepare(EXAMPLE_INPUT)).1, 16);
     }
 }

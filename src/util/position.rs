@@ -275,6 +275,12 @@ pub enum Direction {
     Down = 2,
     Left = 3,
 }
+pub const DIRECTIONS: [Direction; 4] = [
+    Direction::Up,
+    Direction::Down,
+    Direction::Left,
+    Direction::Right,
+];
 
 impl Direction {
     #[must_use]

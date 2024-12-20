@@ -1,7 +1,7 @@
 use crate::solution::SolutionTuple;
 use crate::util::grid::Grid;
 use crate::util::measure::MeasureContext;
-use crate::util::position::{Dimensions, Direction, Position};
+use crate::util::position::{DIRECTIONS, Dimensions, Position};
 use crate::util::solver::solve_breadth_first;
 use std::cmp::Ordering;
 use std::ops::ControlFlow;
@@ -23,13 +23,6 @@ fn prepare(input: &str) -> PreparedInput {
         .map(|l| line.parse(l).unwrap_or_else(|e| panic!("{}", e)))
         .collect()
 }
-
-const DIRECTIONS: [Direction; 4] = [
-    Direction::Up,
-    Direction::Down,
-    Direction::Left,
-    Direction::Right,
-];
 
 fn attempt(mut grid: Grid<bool>) -> Option<usize> {
     let end_position = Position(grid.dimensions.0 - 1, grid.dimensions.1 - 1);

@@ -1,7 +1,7 @@
 use crate::solution::SolutionTuple;
 use crate::util::grid::Grid;
 use crate::util::measure::MeasureContext;
-use crate::util::position::Direction;
+use crate::util::position::{DIRECTIONS, Direction};
 use crate::util::solver::solve_depth_first;
 use rustc_hash::FxHashSet;
 
@@ -10,13 +10,6 @@ type PreparedInput = Grid<u8>;
 fn prepare(input: &str) -> PreparedInput {
     Grid::from_rows(input.lines().map(|line| line.as_bytes().iter().cloned()))
 }
-
-const DIRECTIONS: [Direction; 4] = [
-    Direction::Up,
-    Direction::Down,
-    Direction::Left,
-    Direction::Right,
-];
 
 fn solve_both(input: &PreparedInput) -> (usize, usize) {
     let mut visited = Grid::from_dimensions(input.dimensions, false);

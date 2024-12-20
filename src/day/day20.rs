@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)]
+
 use crate::solution::SolutionTuple;
 use crate::util::grid::Grid;
 use crate::util::measure::MeasureContext;
@@ -35,9 +37,11 @@ fn parse(input: &str) -> (Grid<bool>, Position, Position) {
 
 type PreparedInput = Grid<usize>;
 
+/// Returns distance map from start
+/// Increased by one (so start=1), to remove branching in an inner loop later.
 fn prepare(grid: Grid<bool>, start: Position, end: Position) -> PreparedInput {
-    let mut distances = Grid::from_dimensions(grid.dimensions, usize::MAX);
-    distances.set(&start, 0);
+    let mut distances = Grid::from_dimensions(grid.dimensions, 0);
+    distances.set(&start, 1);
     solve_breadth_first(
         |stack, pos, time| {
             for direction in &DIRECTIONS {
@@ -45,11 +49,11 @@ fn prepare(grid: Grid<bool>, start: Position, end: Position) -> PreparedInput {
                 if grid.contains(&next_position) {
                     continue;
                 }
-                let current_distance = distances.get_mut(&next_position);
-                if *current_distance <= time + 1 {
+                let next_distance = distances.get_mut(&next_position);
+                if *next_distance != 0 && *next_distance <= time + 2 {
                     continue;
                 }
-                *current_distance = time + 1;
+                *next_distance = time + 2;
                 if next_position == end {
                     return Break(());
                 }
@@ -88,18 +92,14 @@ fn prepare(grid: Grid<bool>, start: Position, end: Position) -> PreparedInput {
 
 fn solve_part1(distances: &PreparedInput, minimum: usize) -> usize {
     distances
-        .iter_windows3_where(|tile| *tile == usize::MAX)
+        .iter_windows3_where(|tile| *tile == 0)
         .filter(|window| {
             let left = *window.left();
             let right = *window.right();
             let top = *window.top();
             let bottom = *window.bottom();
-            (left != usize::MAX
-                && right != usize::MAX
-                && left.abs_diff(right).saturating_sub(2) >= minimum)
-                || (top != usize::MAX
-                    && bottom != usize::MAX
-                    && top.abs_diff(bottom).saturating_sub(2) >= minimum)
+            (left != 0 && right != 0 && left.abs_diff(right).saturating_sub(2) >= minimum)
+                || (top != 0 && bottom != 0 && top.abs_diff(bottom).saturating_sub(2) >= minimum)
         })
         .count()
 }
@@ -107,7 +107,7 @@ fn solve_part1(distances: &PreparedInput, minimum: usize) -> usize {
 fn solve_part2(distances: &PreparedInput, minimum: usize) -> usize {
     const CHEAT: usize = 20;
     distances
-        .positions_where(|tile| *tile != usize::MAX)
+        .positions_where(|tile| *tile != 0)
         .map(|pos| {
             let start = *distances.get(&pos);
 
@@ -115,20 +115,30 @@ fn solve_part2(distances: &PreparedInput, minimum: usize) -> usize {
             for y in pos.0.saturating_sub(CHEAT)..(pos.0 + CHEAT + 1).min(distances.dimensions.0) {
                 let y_dist = y.abs_diff(pos.0);
                 let remaining_in_cheat = CHEAT - y_dist;
-                for x in pos.1.saturating_sub(remaining_in_cheat)
-                    ..(pos.1 + remaining_in_cheat + 1).min(distances.dimensions.1)
-                {
-                    let target = *distances.get(&Position::from_yx(y, x));
-                    if target == usize::MAX {
-                        continue;
+
+                let row = distances.get_row(y);
+
+                // Add assertion which allows for removing bounds check in the loop below
+                assert!(pos.1 < row.len());
+
+                // To the left
+                for x in pos.1.saturating_sub(remaining_in_cheat)..pos.1 {
+                    let target = row[x];
+
+                    let cheat_distance = y_dist + pos.1 - x;
+
+                    if target >= minimum + start + cheat_distance {
+                        sum += 1;
                     }
+                }
+                // Current column and to the right
+                for x_dist in 0..(remaining_in_cheat + 1).min(row.len() - pos.1) {
+                    // Can't avoid this check :(
+                    let target = unsafe { *row.get_unchecked(pos.1 + x_dist) };
 
-                    let x_dist = x.abs_diff(pos.1);
                     let cheat_distance = y_dist + x_dist;
-                    assert!(cheat_distance <= CHEAT);
 
-                    let saved = target.saturating_sub(start + cheat_distance);
-                    if saved >= minimum {
+                    if target >= minimum + start + cheat_distance {
                         sum += 1;
                     }
                 }

@@ -118,26 +118,24 @@ fn solve_part2(distances: &PreparedInput, minimum: usize) -> usize {
 
                 let row = distances.get_row(y);
 
+                // To the left
                 // Add assertion which allows for removing bounds check in the loop below
                 assert!(pos.1 < row.len());
-
-                // To the left
                 for x in pos.1.saturating_sub(remaining_in_cheat)..pos.1 {
                     let target = row[x];
-
                     let cheat_distance = y_dist + pos.1 - x;
-
                     if target >= minimum + start + cheat_distance {
                         sum += 1;
                     }
                 }
+
                 // Current column and to the right
-                for x_dist in 0..(remaining_in_cheat + 1).min(row.len() - pos.1) {
-                    // Can't avoid this check :(
-                    let target = unsafe { *row.get_unchecked(pos.1 + x_dist) };
-
-                    let cheat_distance = y_dist + x_dist;
-
+                // Add an assertion to remove bounds check in inner loop
+                let max_x_plus_one = pos.1 + (remaining_in_cheat + 1).min(row.len() - pos.1);
+                assert!(max_x_plus_one <= row.len());
+                for x in pos.1..max_x_plus_one {
+                    let target = row[x];
+                    let cheat_distance = y_dist + x - pos.1;
                     if target >= minimum + start + cheat_distance {
                         sum += 1;
                     }

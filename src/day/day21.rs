@@ -1,8 +1,8 @@
 use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
 use crate::util::position::{Direction, Position};
+use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
-use std::fmt::{Debug, Display, Formatter, Write};
 
 type PreparedInput = Vec<(usize, Vec<u8>)>;
 
@@ -30,29 +30,6 @@ enum DirectionalKey {
     Direction(Direction),
     A,
 }
-impl From<Direction> for DirectionalKey {
-    fn from(d: Direction) -> Self {
-        Self::Direction(d)
-    }
-}
-impl PartialEq<Direction> for DirectionalKey {
-    fn eq(&self, other: &Direction) -> bool {
-        matches!(self, Self::Direction(d) if d == other)
-    }
-}
-impl Display for DirectionalKey {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_char(match self {
-            DirectionalKey::Direction(direction) => match direction {
-                Direction::Up => '^',
-                Direction::Right => '>',
-                Direction::Down => 'v',
-                Direction::Left => '<',
-            },
-            DirectionalKey::A => 'A',
-        })
-    }
-}
 
 fn directional_key_to_position(key: &DirectionalKey) -> Position {
     match key {
@@ -74,7 +51,7 @@ fn numpad_sequence(sequence: &[u8]) -> Vec<Vec<Direction>> {
         .map(|char_position| {
             let offset = char_position - position;
 
-            // Priority: Left -> Down -> Right -> Up
+            // Priority: Left -> Down/Up -> Right
             let mut ops = vec![];
             if (position.0 < 3 || char_position.1 > 0) && offset.1 < 0 {
                 ops.extend(
@@ -92,13 +69,13 @@ fn numpad_sequence(sequence: &[u8]) -> Vec<Vec<Direction>> {
                     std::iter::repeat::<Direction>(Direction::Right).take(offset.1 as usize),
                 );
             }
-            if !(position.1 > 0 || char_position.0 < 3) && offset.0 > 0 {
-                ops.extend(std::iter::repeat::<Direction>(Direction::Down).take(offset.0 as usize));
-            }
             if !(position.0 < 3 || char_position.1 > 0) && offset.1 < 0 {
                 ops.extend(
                     std::iter::repeat::<Direction>(Direction::Left).take(-offset.1 as usize),
                 );
+            }
+            if !(position.1 > 0 || char_position.0 < 3) && offset.0 > 0 {
+                ops.extend(std::iter::repeat::<Direction>(Direction::Down).take(offset.0 as usize));
             }
             position = char_position;
             ops
@@ -106,13 +83,16 @@ fn numpad_sequence(sequence: &[u8]) -> Vec<Vec<Direction>> {
         .collect()
 }
 
-fn directional_key_to_sequence(key: &DirectionalKey, position: &mut Position) -> Vec<Direction> {
+fn directional_key_to_sequence(
+    key: &DirectionalKey,
+    position: &mut Position,
+) -> ArrayVec<Direction, 3> {
     let key_position = directional_key_to_position(key);
 
     let offset = key_position - *position;
 
-    // Priority: Left -> Down -> Right -> Up
-    let mut ops = vec![];
+    // Priority: Left -> Down/Up -> Right
+    let mut ops = ArrayVec::new();
     if (position.0 > 0 || key_position.1 > 0) && offset.1 < 0 {
         ops.extend(std::iter::repeat::<Direction>(Direction::Left).take(-offset.1 as usize));
     }
@@ -135,7 +115,7 @@ fn directional_key_to_sequence(key: &DirectionalKey, position: &mut Position) ->
     ops
 }
 
-fn directional_sequence(sequence: &[Direction]) -> Vec<Vec<Direction>> {
+fn directional_sequence(sequence: &[Direction]) -> Vec<ArrayVec<Direction, 3>> {
     let mut position = directional_key_to_position(&DirectionalKey::A);
     sequence
         .iter()
@@ -146,19 +126,29 @@ fn directional_sequence(sequence: &[Direction]) -> Vec<Vec<Direction>> {
 }
 
 fn solve_iterations_single(sequence: &[u8], iterations: usize) -> usize {
-    let mut sequence_parts =
-        numpad_sequence(sequence)
-            .into_iter()
-            .fold(FxHashMap::default(), |mut map, part| {
-                *map.entry(part.to_owned()).or_insert(0) += 1;
-                map
-            });
+    let parts = numpad_sequence(sequence);
+    if iterations == 0 {
+        return parts.into_iter().map(|sequence| sequence.len() + 1).sum();
+    }
 
-    for _ in 0..iterations {
-        let mut new_sequence_counts = FxHashMap::default();
+    let mut sequence_parts = parts.into_iter().fold(FxHashMap::default(), |map, part| {
+        let sequence = directional_sequence(&part);
+        sequence.into_iter().fold(map, |mut map, part| {
+            *map.entry(part).or_insert(0) += 1;
+            map
+        })
+    });
+
+    let mut cache = FxHashMap::default();
+
+    for _ in 1..iterations {
+        let mut new_sequence_counts =
+            FxHashMap::with_capacity_and_hasher(sequence_parts.len(), Default::default());
         for (part, part_count) in sequence_parts {
-            let sequence = directional_sequence(&part);
-            sequence.into_iter().for_each(|part| {
+            let sequence = cache
+                .entry(part.clone())
+                .or_insert_with(|| directional_sequence(&part));
+            sequence.iter().for_each(|part| {
                 *new_sequence_counts.entry(part.to_owned()).or_insert(0) += part_count;
             });
         }

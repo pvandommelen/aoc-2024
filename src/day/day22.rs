@@ -1,5 +1,6 @@
 use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
+use std::simd::{LaneCount, Simd, SupportedLaneCount};
 
 type PreparedInput = Vec<u32>;
 
@@ -11,18 +12,26 @@ const PRUNE: u32 = 16777216;
 
 /// Work with an internal representation (with less pruning) to speed up the inner loop.
 /// To convert the internal state to the number, internal_to_number should be used.
-fn evolve_internal(mut number: u32) -> u32 {
+fn evolve_internal<const N: usize>(mut number: Simd<u32, N>) -> Simd<u32, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
     number ^= number << 6;
-    number ^= (number % PRUNE) >> 5;
+    number ^= (number % Simd::splat(PRUNE)) >> 5;
     number ^= number << 11;
 
     number
 }
-fn internal_to_number(number: u32) -> u32 {
-    number % PRUNE
+fn internal_to_number<const N: usize>(number: Simd<u32, N>) -> Simd<u32, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    number % Simd::splat(PRUNE)
 }
-
-fn evolve_iter(mut number: u32) -> impl Iterator<Item = u32> {
+fn evolve_iter<const N: usize>(mut number: Simd<u32, N>) -> impl Iterator<Item = Simd<u32, N>>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
     std::iter::from_fn(move || {
         number = evolve_internal(number);
         Some(number)
@@ -31,8 +40,11 @@ fn evolve_iter(mut number: u32) -> impl Iterator<Item = u32> {
 
 const SECRET_NUMBERS: usize = 2000;
 
-fn price(number: u32) -> u32 {
-    number % 10
+fn price<const N: usize>(number: Simd<u32, N>) -> Simd<u32, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    number % Simd::splat(10)
 }
 
 fn solve_both(input: &PreparedInput) -> (u64, u32) {
@@ -40,58 +52,74 @@ fn solve_both(input: &PreparedInput) -> (u64, u32) {
 
     // Within the map, also keep track of the list item it was inserted with. This is used for the only-first check.
     // Implemented using an array. At 8 bytes * 19^4, this uses about 1 MB of memory
-    let mut map = vec![(u32::MAX, 0u32); 19 * 19 * 19 * 19];
+    let mut map = vec![0u32; 19 * 19 * 19 * 19];
+    let nineteen_simd: Simd<u32, 64> = Simd::splat(19);
+    let nineteen_simd_2 = nineteen_simd * nineteen_simd;
+    let nineteen_simd_3 = nineteen_simd_2 * nineteen_simd;
+    let eight_byte_mask: Simd<u32, 64> = Simd::splat((1 << 8) - 1);
 
-    input
-        .iter()
-        .enumerate()
-        .for_each(|(list_item_index, number)| {
-            let list_item_index = list_item_index as u32;
+    let mut found = vec![0u64; 19 * 19 * 19 * 19];
 
-            let mut last_number = 0;
-            let mut prices = evolve_iter(*number)
-                .take(SECRET_NUMBERS)
-                .map(internal_to_number)
-                .inspect(|num| last_number = *num)
-                .map(price);
+    input.chunks(64).for_each(|chunk| {
+        found.iter_mut().for_each(|elem| *elem = 0);
 
-            let mut previous_price = prices.next().unwrap();
-            let mut window = 0u32;
-            let mut price_window_iter = prices.map(|price| {
-                // Price will go from -9 to 9. Map difference from 0..=18
-                // This is 5 bytes, shift window by 8 bytes so that its values are shifted out of scope after 4 shifts (32 bytes)
-                let price_diff = price + 9 - previous_price;
-                previous_price = price;
+        let numbers: Simd<u32, 64> = Simd::load_or_default(chunk);
 
-                window <<= 8;
-                window |= price_diff;
+        let mut last_number = Simd::splat(0);
 
-                (price, window)
-            });
+        let mut prices = evolve_iter(numbers)
+            .take(SECRET_NUMBERS)
+            .map(internal_to_number)
+            .inspect(|num| last_number = *num)
+            .map(price);
 
-            // Window will not be valid for the first three iterations
-            for _ in 0..3 {
-                price_window_iter.next().unwrap();
-            }
+        let mut previous_price = prices.next().unwrap();
+        let mut window = Simd::splat(0u32);
+        let mut price_window_iter = prices.map(|price| {
+            // Price will go from -9 to 9. Map difference from 0..=18
+            // This is 5 bytes, shift window by 8 bytes so that its values are shifted out of scope after 4 shifts (32 bytes)
+            let price_diff = price + Simd::splat(9) - previous_price;
+            previous_price = price;
 
-            for (price, window) in price_window_iter {
-                // Turn the window using most of the u32 range into something smaller so a dumber map (an array) can be used
-                let window_idx = (window >> 24) * 19 * 19 * 19
-                    + ((window >> 16) % (1 << 8)) * 19 * 19
-                    + ((window >> 8) % (1 << 8)) * 19
-                    + window % (1 << 8);
+            window <<= 8;
+            window |= price_diff;
 
-                let entry = &mut map[window_idx as usize];
-                // Only add if the current entry was from a previous item
-                if entry.0 != list_item_index {
-                    *entry = (list_item_index, entry.1 + price);
-                }
-            }
-
-            p1 += last_number as u64;
+            (price, window)
         });
 
-    (p1, map.into_iter().map(|(_, sum)| sum).max().unwrap())
+        // Window will not be valid for the first three iterations
+        for _ in 0..3 {
+            price_window_iter.next().unwrap();
+        }
+
+        for (price, window) in price_window_iter {
+            // Turn the window using most of the u32 range into something smaller so a dumber map (an array) can be used
+            let window_idx = (window >> 24) * nineteen_simd_3
+                + ((window >> 16) & eight_byte_mask) * nineteen_simd_2
+                + ((window >> 8) & eight_byte_mask) * nineteen_simd
+                + (window & eight_byte_mask);
+
+            for i in 0..chunk.len() {
+                let window_idx = window_idx[i] as usize;
+
+                // Only add if the current entry was from a previous item
+                let found = &mut found[window_idx];
+                if (*found >> i) & 1 == 0 {
+                    let entry = &mut map[window_idx];
+                    *entry += price[i];
+                    *found |= 1 << i;
+                }
+            }
+        }
+
+        p1 += last_number
+            .as_array()
+            .iter()
+            .map(|last_number| *last_number as u64)
+            .sum::<u64>();
+    });
+
+    (p1, map.into_iter().max().unwrap())
 }
 
 pub fn solve(ctx: &mut MeasureContext, input: &str) -> SolutionTuple {
@@ -114,9 +142,10 @@ mod tests {
     #[test]
     fn evolve_123() {
         assert_eq!(
-            evolve_iter(123)
+            evolve_iter(Simd::from_array([123]))
                 .take(10)
                 .map(internal_to_number)
+                .map(|simd| simd[0])
                 .collect::<Vec<_>>(),
             [
                 15887950, 16495136, 527345, 704524, 1553684, 12683156, 11100544, 12249484, 7753432,

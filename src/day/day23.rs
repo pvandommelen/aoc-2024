@@ -38,35 +38,49 @@ fn parse(input: &str) -> Vec<(Computer, Computer)> {
 }
 
 struct Graph {
-    nodes: FxHashMap<Computer, FxHashSet<Computer>>,
+    nodes: Vec<Computer>,
+    edge_map: Vec<FxHashSet<usize>>,
 }
 
 type PreparedInput = Graph;
 fn prepare(parsed: Vec<(Computer, Computer)>) -> Graph {
-    let mut graph = Graph {
-        nodes: FxHashMap::default(),
-    };
+    let mut nodes = vec![];
+    let mut nodes_map = FxHashMap::default();
+    let mut edge_map = vec![];
+
     parsed.into_iter().for_each(|(a, b)| {
-        graph.nodes.entry(a).or_default().insert(b);
-        graph.nodes.entry(b).or_default().insert(a);
+        let idx_a = *nodes_map.entry(a).or_insert_with(|| {
+            nodes.push(a);
+            edge_map.push(FxHashSet::default());
+            nodes.len() - 1
+        });
+        let idx_b = *nodes_map.entry(b).or_insert_with(|| {
+            nodes.push(b);
+            edge_map.push(FxHashSet::default());
+            nodes.len() - 1
+        });
+        edge_map[idx_a].insert(idx_b);
+        edge_map[idx_b].insert(idx_a);
     });
-    graph
+    Graph { nodes, edge_map }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-struct Set {
-    set: Vec<Computer>,
+struct OrderedSet {
+    set: Vec<usize>,
 }
-impl FromIterator<Computer> for Set {
-    fn from_iter<I: IntoIterator<Item = Computer>>(iter: I) -> Self {
+impl FromIterator<usize> for OrderedSet {
+    fn from_iter<I: IntoIterator<Item = usize>>(iter: I) -> Self {
         let mut set = iter.into_iter().collect::<Vec<_>>();
         set.sort_unstable();
-        Set { set }
+        OrderedSet { set }
     }
 }
-impl Set {
-    fn intersect(&self, set: &FxHashSet<Computer>) -> Self {
-        Self::from_iter(self.set.iter().filter(|c| set.contains(c)).cloned())
+impl OrderedSet {
+    fn intersect(&self, set: &FxHashSet<usize>) -> Self {
+        let mut v = self.set.clone();
+        v.retain(|c| set.contains(c));
+        Self { set: v }
     }
 }
 
@@ -74,12 +88,12 @@ fn solve_part1(graph: &PreparedInput) -> usize {
     let sets = graph
         .nodes
         .iter()
-        .filter(|(computer, _)| computer.name[0] == b't')
-        .flat_map(|(root, connected)| {
-            connected.iter().flat_map(|con| {
-                graph.nodes[con]
-                    .intersection(connected)
-                    .map(|third| Set::from_iter([*root, *con, *third]))
+        .positions(|computer| computer.name[0] == b't')
+        .flat_map(|i| {
+            graph.edge_map[i].iter().flat_map(move |con| {
+                graph.edge_map[*con]
+                    .intersection(&graph.edge_map[i])
+                    .map(move |third| OrderedSet::from_iter([i, *con, *third]))
             })
         })
         .collect::<FxHashSet<_>>();
@@ -89,12 +103,11 @@ fn solve_part1(graph: &PreparedInput) -> usize {
 
 #[derive(Eq, PartialEq, Hash, Clone)]
 struct State {
-    set: Set,
+    set: OrderedSet,
 }
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
         self.set.set.len().cmp(&other.set.set.len())
-        // .then_with(|| self.set.cmp(&other.set))
     }
 }
 impl PartialOrd for State {
@@ -105,22 +118,24 @@ impl PartialOrd for State {
 
 fn solve_part2(graph: &PreparedInput) -> String {
     let computer_sets = graph
-        .nodes
+        .edge_map
         .iter()
+        .enumerate()
         .map(|(computer, connected)| {
-            let candidate = Set::from_iter(connected.iter().chain([computer]).cloned());
-            (*computer, candidate)
+            let candidate = OrderedSet::from_iter(connected.iter().cloned().chain([computer]));
+            (computer, candidate)
         })
         .collect::<FxHashMap<_, _>>();
     let candidates = computer_sets.values().map(|set| State { set: set.clone() });
 
     let computer_sets = graph
-        .nodes
+        .edge_map
         .iter()
+        .enumerate()
         .map(|(computer, connected)| {
             let mut set = connected.clone();
-            set.insert(*computer);
-            (*computer, set)
+            set.insert(computer);
+            (computer, set)
         })
         .collect::<FxHashMap<_, _>>();
 
@@ -145,7 +160,9 @@ fn solve_part2(graph: &PreparedInput) -> String {
     );
     let set = state.unwrap().set;
 
-    set.set.into_iter().join(",")
+    let mut set_names = set.set.into_iter().map(|i| graph.nodes[i]).collect_vec();
+    set_names.sort_unstable();
+    set_names.into_iter().join(",")
 }
 
 pub fn solve(ctx: &mut MeasureContext, input: &str) -> SolutionTuple {

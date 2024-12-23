@@ -1,5 +1,6 @@
 use rustc_hash::FxHashSet;
 use std::collections::BinaryHeap;
+use std::hash::Hash;
 use std::ops::ControlFlow;
 
 /// Push/pop stack implementation with an optimization for the last entry.
@@ -43,7 +44,7 @@ pub fn solve_breadth_first_dedup<F, S>(
 ) -> Option<(S, usize)>
 where
     F: FnMut(&mut FxHashSet<S>, &S, usize) -> ControlFlow<()>,
-    S: std::hash::Hash + Eq,
+    S: Hash + Eq,
 {
     let mut round = 0;
     let mut states: FxHashSet<_> = states.into_iter().collect();
@@ -96,6 +97,60 @@ where
     F: FnMut(&mut BinaryHeap<S>, &S) -> ControlFlow<()>,
 {
     let mut stack = states.into_iter().collect::<BinaryHeap<_>>();
+
+    while let Some(current) = stack.pop() {
+        match next(&mut stack, &current) {
+            ControlFlow::Continue(_) => {}
+            ControlFlow::Break(_) => return Some(current),
+        }
+    }
+    None
+}
+
+pub trait Stack<S> {
+    fn push(&mut self, item: S);
+}
+
+pub struct PriorityDedupStack<S: Ord> {
+    stack: BinaryHeap<S>,
+    stack_set: FxHashSet<S>,
+}
+impl<S: Ord> Default for PriorityDedupStack<S> {
+    fn default() -> Self {
+        PriorityDedupStack {
+            stack: Default::default(),
+            stack_set: Default::default(),
+        }
+    }
+}
+impl<S: Hash + Ord + Clone> Stack<S> for PriorityDedupStack<S> {
+    fn push(&mut self, item: S) {
+        if !self.stack_set.contains(&item) {
+            self.stack_set.insert(item.clone());
+            self.stack.push(item);
+        }
+    }
+}
+impl<S: Ord> PriorityDedupStack<S> {
+    fn pop(&mut self) -> Option<S>
+    where
+        S: Hash,
+    {
+        let item = self.stack.pop()?;
+        self.stack_set.remove(&item);
+        Some(item)
+    }
+}
+
+pub fn solve_priority_dedup<F, S>(mut next: F, states: Vec<S>) -> Option<S>
+where
+    S: Ord + Hash + Clone,
+    F: FnMut(&mut PriorityDedupStack<S>, &S) -> ControlFlow<()>,
+{
+    let mut stack = PriorityDedupStack::default();
+    states.into_iter().for_each(|state| {
+        stack.push(state);
+    });
 
     while let Some(current) = stack.pop() {
         match next(&mut stack, &current) {

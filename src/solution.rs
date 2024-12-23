@@ -20,6 +20,7 @@ pub enum Solution {
     Str(String),
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SolutionTuple(pub Solution, pub Solution);
 
 impl Display for Solution {

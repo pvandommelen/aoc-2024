@@ -72,11 +72,13 @@ fn main() {
 
             let mut ctx = MeasureContext::new();
             let start = Instant::now();
+            let solution = solver(&mut ctx, black_box(&input));
             for _ in 0..args.repeat - 1 {
-                black_box(solver(&mut ctx, black_box(&input)));
+                assert_eq!(&black_box(solver(&mut ctx, black_box(&input))), &solution);
             }
-            let SolutionTuple(p1, p2) = solver(&mut ctx, black_box(&input));
             let end = Instant::now();
+
+            let SolutionTuple(p1, p2) = solution;
 
             println!("day{}/part1: {}", day, p1);
             println!("day{}/part2: {}", day, p2);

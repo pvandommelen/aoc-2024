@@ -1,6 +1,6 @@
 use crate::solution::SolutionTuple;
 use crate::util::measure::MeasureContext;
-use crate::util::solver::solve_priority;
+use crate::util::solver::{Stack, solve_priority_dedup};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Ordering;
@@ -87,13 +87,14 @@ fn solve_part1(graph: &PreparedInput) -> usize {
     sets.len()
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Hash, Clone)]
 struct State {
     set: Set,
 }
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
         self.set.set.len().cmp(&other.set.set.len())
+        // .then_with(|| self.set.cmp(&other.set))
     }
 }
 impl PartialOrd for State {
@@ -123,18 +124,18 @@ fn solve_part2(graph: &PreparedInput) -> String {
         })
         .collect::<FxHashMap<_, _>>();
 
-    let state = solve_priority(
+    let state = solve_priority_dedup(
         |stack, s| {
-            if s.set.set.iter().all(|computer| {
+            let mut all_match = true;
+            s.set.set.iter().for_each(|computer| {
                 let intersection = s.set.intersect(&computer_sets[computer]);
 
-                if intersection.set.len() == s.set.set.len() {
-                    true
-                } else {
+                if intersection.set.len() != s.set.set.len() {
                     stack.push(State { set: intersection });
-                    false
+                    all_match = false;
                 }
-            }) {
+            });
+            if all_match {
                 ControlFlow::Break(())
             } else {
                 ControlFlow::Continue(())

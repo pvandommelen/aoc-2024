@@ -18,6 +18,7 @@ pub enum Solution {
     U128(u128),
     Usize(usize),
     Str(String),
+    Nothing(),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -39,6 +40,7 @@ impl Display for Solution {
             U128(x) => x.fmt(f),
             Usize(x) => x.fmt(f),
             Str(x) => x.fmt(f),
+            Nothing() => f.write_str("-"),
         }
     }
 }
@@ -80,5 +82,20 @@ where
 {
     fn from(value: (A, B)) -> Self {
         SolutionTuple(value.0.into(), value.1.into())
+    }
+}
+
+impl<A> From<(A, ())> for SolutionTuple
+where
+    A: Into<Solution>,
+{
+    fn from(value: (A, ())) -> Self {
+        SolutionTuple(value.0.into(), Nothing())
+    }
+}
+
+impl From<((), ())> for SolutionTuple {
+    fn from(_: ((), ())) -> Self {
+        SolutionTuple(Nothing(), Nothing())
     }
 }

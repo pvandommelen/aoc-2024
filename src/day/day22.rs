@@ -47,23 +47,25 @@ where
     number % Simd::splat(10)
 }
 
+const LANE: usize = 8;
+
 fn solve_both(input: &PreparedInput) -> (u64, u32) {
     let mut p1 = 0;
 
     // Within the map, also keep track of the list item it was inserted with. This is used for the only-first check.
     // Implemented using an array. At 8 bytes * 19^4, this uses about 1 MB of memory
     let mut map = vec![0u32; 19 * 19 * 19 * 19];
-    let nineteen_simd: Simd<u32, 64> = Simd::splat(19);
+    let nineteen_simd: Simd<u32, LANE> = Simd::splat(19);
     let nineteen_simd_2 = nineteen_simd * nineteen_simd;
     let nineteen_simd_3 = nineteen_simd_2 * nineteen_simd;
-    let eight_byte_mask: Simd<u32, 64> = Simd::splat((1 << 8) - 1);
+    let eight_byte_mask: Simd<u32, LANE> = Simd::splat((1 << 8) - 1);
 
-    let mut found = vec![0u64; 19 * 19 * 19 * 19];
+    let mut found = vec![0u8; 19 * 19 * 19 * 19];
 
-    input.chunks(64).for_each(|chunk| {
+    input.chunks(LANE).for_each(|chunk| {
         found.iter_mut().for_each(|elem| *elem = 0);
 
-        let numbers: Simd<u32, 64> = Simd::load_or_default(chunk);
+        let numbers: Simd<u32, LANE> = Simd::load_or_default(chunk);
 
         let mut last_number = Simd::splat(0);
 

@@ -49,17 +49,18 @@ where
 
 const LANE: usize = 8;
 
-fn solve_both(input: &PreparedInput) -> (u64, u32) {
+fn solve_both(input: &PreparedInput) -> (u64, u16) {
     let mut p1 = 0;
 
-    // Within the map, also keep track of the list item it was inserted with. This is used for the only-first check.
-    // Implemented using an array. At 8 bytes * 19^4, this uses about 1 MB of memory
-    let mut map = vec![0u32; 19 * 19 * 19 * 19];
+    // Implemented using an array. At 2 bytes * 19^4, this uses about 0.25 MB of memory
+    let mut map = vec![0u16; 19 * 19 * 19 * 19];
     let nineteen_simd: Simd<u32, LANE> = Simd::splat(19);
     let nineteen_simd_2 = nineteen_simd * nineteen_simd;
     let nineteen_simd_3 = nineteen_simd_2 * nineteen_simd;
     let eight_byte_mask: Simd<u32, LANE> = Simd::splat((1 << 8) - 1);
 
+    // Pre-allocate a map where each combination maps to an entry.
+    // Each bit in an entry is used for a simd lane.
     let mut found = vec![0u8; 19 * 19 * 19 * 19];
 
     input.chunks(LANE).for_each(|chunk| {
@@ -108,7 +109,7 @@ fn solve_both(input: &PreparedInput) -> (u64, u32) {
                 let found = &mut found[window_idx];
                 if (*found >> i) & 1 == 0 {
                     let entry = &mut map[window_idx];
-                    *entry += price[i];
+                    *entry += price[i] as u16;
                     *found |= 1 << i;
                 }
             }

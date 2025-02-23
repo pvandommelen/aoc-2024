@@ -7,11 +7,11 @@ use std::cmp::Ordering;
 use std::ops::ControlFlow;
 use winnow::ascii::dec_uint;
 use winnow::combinator::separated_pair;
-use winnow::{PResult, Parser};
+use winnow::{ModalResult, Parser};
 
 type PreparedInput = Vec<Position>;
 
-fn line(input: &mut &str) -> PResult<Position> {
+fn line(input: &mut &str) -> ModalResult<Position> {
     separated_pair(dec_uint, ',', dec_uint)
         .map(|(x, y)| Position::from_yx(y, x))
         .parse_next(input)

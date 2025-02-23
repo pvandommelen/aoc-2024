@@ -3,7 +3,7 @@ use crate::util::measure::MeasureContext;
 use num::integer::div_rem;
 use winnow::ascii::dec_uint;
 use winnow::combinator::{preceded, separated_pair};
-use winnow::{PResult, Parser};
+use winnow::{ModalResult, Parser};
 
 #[derive(Debug, Copy, Clone)]
 struct ButtonBehaviour {
@@ -27,19 +27,19 @@ struct Machine {
 type PreparedInput = Vec<Machine>;
 
 fn prepare(input: &str) -> PreparedInput {
-    fn button_behaviour(input: &mut &str) -> PResult<ButtonBehaviour> {
+    fn button_behaviour(input: &mut &str) -> ModalResult<ButtonBehaviour> {
         separated_pair(preceded("X+", dec_uint), ", ", preceded("Y+", dec_uint))
             .map(|(x, y)| ButtonBehaviour { x, y })
             .parse_next(input)
     }
 
-    fn prize(input: &mut &str) -> PResult<Prize> {
+    fn prize(input: &mut &str) -> ModalResult<Prize> {
         separated_pair(preceded("X=", dec_uint), ", ", preceded("Y=", dec_uint))
             .map(|(x, y)| Prize { x, y })
             .parse_next(input)
     }
 
-    fn machine(input: &mut &str) -> PResult<Machine> {
+    fn machine(input: &mut &str) -> ModalResult<Machine> {
         (
             preceded("Button A: ", button_behaviour),
             preceded("\nButton B: ", button_behaviour),

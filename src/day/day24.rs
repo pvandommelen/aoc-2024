@@ -9,7 +9,7 @@ use winnow::ascii::{alphanumeric1, dec_uint};
 use winnow::combinator::{alt, opt, preceded, separated_pair};
 use winnow::error::ContextError;
 use winnow::token::take_while;
-use winnow::{PResult, Parser};
+use winnow::{ModalResult, Parser};
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 struct Wire {
@@ -42,16 +42,16 @@ enum Operator {
 
 type PreparedInput = (FxHashMap<Wire, bool>, Vec<(Wire, Wire, Operator, Wire)>);
 
-fn wire(input: &mut &str) -> PResult<Wire> {
+fn wire(input: &mut &str) -> ModalResult<Wire> {
     alphanumeric1
         .try_map(|s: &str| s.as_bytes().try_into().map(|name| Wire { name }))
         .parse_next(input)
 }
 
-fn starting_value(input: &mut &str) -> PResult<(Wire, bool)> {
+fn starting_value(input: &mut &str) -> ModalResult<(Wire, bool)> {
     separated_pair(wire, ": ", alt(('0'.value(false), '1'.value(true)))).parse_next(input)
 }
-fn operation(input: &mut &str) -> PResult<(Wire, Wire, Operator, Wire)> {
+fn operation(input: &mut &str) -> ModalResult<(Wire, Wire, Operator, Wire)> {
     (
         wire,
         ' ',

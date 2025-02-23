@@ -4,7 +4,7 @@ use crate::util::measure::MeasureContext;
 use crate::util::position::{Dimensions, Position, PositionOffset};
 use winnow::ascii::{dec_int, dec_uint};
 use winnow::combinator::{preceded, separated_pair};
-use winnow::{PResult, Parser};
+use winnow::{ModalResult, Parser};
 
 #[derive(Debug, Copy, Clone)]
 struct Robot {
@@ -13,7 +13,7 @@ struct Robot {
 }
 type PreparedInput = Vec<Robot>;
 
-fn line(input: &mut &str) -> PResult<Robot> {
+fn line(input: &mut &str) -> ModalResult<Robot> {
     separated_pair(
         preceded("p=", separated_pair(dec_uint, ",", dec_uint)).map(|(x, y)| Position(y, x)),
         " ",

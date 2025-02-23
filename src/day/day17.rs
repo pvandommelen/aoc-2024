@@ -179,9 +179,10 @@ Program: 0,1,5,4,3,0";
     #[test]
     fn part1_small_examples() {
         assert_eq!(run_program([0, 0, 9], &[2, 6]).0[1], 1);
-        assert_eq!(run_program([10, 0, 0], &[5, 0, 5, 1, 5, 4]).1, vec![
-            0, 1, 2
-        ]);
+        assert_eq!(
+            run_program([10, 0, 0], &[5, 0, 5, 1, 5, 4]).1,
+            vec![0, 1, 2]
+        );
         assert_eq!(
             run_program([2024, 0, 0], &[0, 1, 5, 4, 3, 0]),
             ([0, 0, 0], vec![4, 2, 5, 6, 7, 7, 7, 7, 3, 1, 0])

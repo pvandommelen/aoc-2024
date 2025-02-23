@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::ControlFlow;
 use winnow::combinator::separated_pair;
-use winnow::{PResult, Parser};
+use winnow::{ModalResult, Parser};
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 struct Computer {
@@ -19,14 +19,14 @@ impl Display for Computer {
     }
 }
 
-fn computer(input: &mut &str) -> PResult<Computer> {
+fn computer(input: &mut &str) -> ModalResult<Computer> {
     winnow::ascii::alpha1
         .verify_map(|s: &str| s.as_bytes().try_into().ok())
         .map(|name| Computer { name })
         .parse_next(input)
 }
 
-fn line(input: &mut &str) -> PResult<(Computer, Computer)> {
+fn line(input: &mut &str) -> ModalResult<(Computer, Computer)> {
     separated_pair(computer, '-', computer).parse_next(input)
 }
 

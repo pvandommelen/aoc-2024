@@ -30,7 +30,7 @@ impl IntSet {
         T: Into<usize>,
     {
         IntSet {
-            data: vec![0; (maximum.into() + 63) / 64],
+            data: vec![0; maximum.into().div_ceil(64)],
         }
     }
 

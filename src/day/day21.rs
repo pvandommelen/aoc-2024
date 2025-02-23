@@ -54,28 +54,22 @@ fn numpad_sequence(sequence: &[u8]) -> Vec<Vec<Direction>> {
             // Priority: Left -> Down/Up -> Right
             let mut ops = vec![];
             if (position.0 < 3 || char_position.1 > 0) && offset.1 < 0 {
-                ops.extend(
-                    std::iter::repeat::<Direction>(Direction::Left).take(-offset.1 as usize),
-                );
+                ops.extend(std::iter::repeat_n(Direction::Left, -offset.1 as usize));
             }
             if (position.1 > 0 || char_position.0 < 3) && offset.0 > 0 {
-                ops.extend(std::iter::repeat::<Direction>(Direction::Down).take(offset.0 as usize));
+                ops.extend(std::iter::repeat_n(Direction::Down, offset.0 as usize));
             }
             if offset.0 < 0 {
-                ops.extend(std::iter::repeat::<Direction>(Direction::Up).take(-offset.0 as usize));
+                ops.extend(std::iter::repeat_n(Direction::Up, -offset.0 as usize));
             }
             if offset.1 > 0 {
-                ops.extend(
-                    std::iter::repeat::<Direction>(Direction::Right).take(offset.1 as usize),
-                );
+                ops.extend(std::iter::repeat_n(Direction::Right, offset.1 as usize));
             }
             if !(position.0 < 3 || char_position.1 > 0) && offset.1 < 0 {
-                ops.extend(
-                    std::iter::repeat::<Direction>(Direction::Left).take(-offset.1 as usize),
-                );
+                ops.extend(std::iter::repeat_n(Direction::Left, -offset.1 as usize));
             }
             if !(position.1 > 0 || char_position.0 < 3) && offset.0 > 0 {
-                ops.extend(std::iter::repeat::<Direction>(Direction::Down).take(offset.0 as usize));
+                ops.extend(std::iter::repeat_n(Direction::Down, offset.0 as usize));
             }
             position = char_position;
             ops
@@ -94,22 +88,22 @@ fn directional_key_to_sequence(
     // Priority: Left -> Down/Up -> Right
     let mut ops = ArrayVec::new();
     if (position.0 > 0 || key_position.1 > 0) && offset.1 < 0 {
-        ops.extend(std::iter::repeat::<Direction>(Direction::Left).take(-offset.1 as usize));
+        ops.extend(std::iter::repeat_n(Direction::Left, -offset.1 as usize));
     }
     if offset.0 > 0 {
-        ops.extend(std::iter::repeat::<Direction>(Direction::Down).take(offset.0 as usize));
+        ops.extend(std::iter::repeat_n(Direction::Down, offset.0 as usize));
     }
     if (position.1 > 0 || key_position.0 > 0) && offset.0 < 0 {
-        ops.extend(std::iter::repeat::<Direction>(Direction::Up).take(-offset.0 as usize));
+        ops.extend(std::iter::repeat_n(Direction::Up, -offset.0 as usize));
     }
     if offset.1 > 0 {
-        ops.extend(std::iter::repeat::<Direction>(Direction::Right).take(offset.1 as usize));
+        ops.extend(std::iter::repeat_n(Direction::Right, offset.1 as usize));
     }
     if !(position.0 > 0 || key_position.1 > 0) && offset.1 < 0 {
-        ops.extend(std::iter::repeat::<Direction>(Direction::Left).take(-offset.1 as usize));
+        ops.extend(std::iter::repeat_n(Direction::Left, -offset.1 as usize));
     }
     if !(position.1 > 0 || key_position.0 > 0) && offset.0 < 0 {
-        ops.extend(std::iter::repeat::<Direction>(Direction::Up).take(-offset.0 as usize));
+        ops.extend(std::iter::repeat_n(Direction::Up, -offset.0 as usize));
     }
     *position = key_position;
     ops

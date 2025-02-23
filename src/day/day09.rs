@@ -11,7 +11,7 @@ fn prepare(input: &str) -> Vec<u8> {
 fn solve_part1(input: &PreparedInput) -> usize {
     let required: usize = input.iter().step_by(2).map(|num| *num as usize).sum();
     let end = input.iter().rev().step_by(2);
-    let mut end_ids = (0..(input.len() + 1) / 2)
+    let mut end_ids = (0..input.len().div_ceil(2))
         .rev()
         .zip(end)
         .flat_map(|(id, len)| std::iter::repeat_n(id, *len as usize));
@@ -47,7 +47,7 @@ fn solve_part1(input: &PreparedInput) -> usize {
 
 fn solve_part2(input: &PreparedInput) -> usize {
     let mut pos = 0usize;
-    let mut blocks = Vec::with_capacity((input.len() + 1) / 2);
+    let mut blocks = Vec::with_capacity(input.len().div_ceil(2));
     let mut empty: [Vec<_>; 9] = array::from_fn(|_| vec![]);
     input.iter().enumerate().for_each(|(i, num)| {
         let up_to = pos + (*num as usize);
@@ -61,7 +61,7 @@ fn solve_part2(input: &PreparedInput) -> usize {
     });
     empty.iter_mut().for_each(|v| v.reverse());
 
-    assert_eq!(blocks.len(), (input.len() + 1) / 2);
+    assert_eq!(blocks.len(), input.len().div_ceil(2));
 
     for block in blocks.iter_mut().rev() {
         let block_len = block.1.len();
